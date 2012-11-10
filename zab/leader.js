@@ -17,42 +17,69 @@ upon receiving ACKEPOCH from all followers in Q do
 end
 */
 
-function Leader() {
+function Leader(id) {
+  this.id = id;
   this.phase = 1;
   this.totalNodes = 3;
   this.quorumSize = 2;
 
+  this.history = []; // a log of transaction proposals accepted
+  this.acceptedEpoch = 0; // the epoch number of the last NEWEPOCH message accepted
+  this.currentEpoch = 0 // the epoch number of the last NEWLEADER message accepted
+  this.lastZxid = 0; // zxid of the last proposal in the history
+
   this.discoveryResponses = {};
   this.ackResponses = {};
+  this.syncResponses = {};
+  this.broadcastResponses = {};
+}
+
+Leader.prototype.execute = function() {
+  // phase 1 is no-op
+  if(this.phase == 2) {
+    this.broadcast({
+      type: 'NEWLEADER',
+      epoch: this.currentEpoch,
+      history: this.history
+    });
+  }
 }
 
 Leader.prototype.discovery = function(m) {
+  var self = this;
   if(m.type == 'FOLLOWERINFO') {
     this.discoveryResponses[m.senderId] = m;
 
-    if(Object.keys(this.discoveryResponses).length > this.quorumSize) {
+    if(Object.keys(this.discoveryResponses).length >= this.quorumSize) {
       var maxEpoch = Object.keys(this.discoveryResponses).reduce(function(prev, key){
         return Math.max(prev, self.discoveryResponses[key].epoch);
       }, 0);
+
+      // implied?
+      this.currentEpoch = maxEpoch + 1;
+      console.log(this.discoveryResponses, this.currentEpoch);
+
       this.broadcast({
         type: 'NEWEPOCH',
-        epoch: maxEpoch
+        epoch: this.currentEpoch
       });
     }
   }
   if(m.type == 'ACKEPOCH') {
     this.ackResponses[m.senderId] = m;
-    if(Object.keys(this.ackResponses).length > this.quorumSize) {
+    if(Object.keys(this.ackResponses).length >= this.quorumSize) {
       // first, sort by currentEpoch
       var sortedIds = Object.keys(this.ackResponses).sort(function(a, b) {
-        if(a.epoch - b.epoch != 0) {
-          return a.epoch - b.epoch;
+        if(a.currentEpoch - b.currentEpoch != 0) {
+          return a.currentEpoch - b.currentEpoch;
         } else {
           return a.lastZxid - b.lastZxid;
         }
       });
+
       var chosen = sortedIds[0];
       this.history = this.ackResponses[chosen].history; // to non-volatile memory
+      this.phase = 2;
     }
   }
 };
@@ -69,7 +96,15 @@ end
 */
 
 Leader.prototype.synchronization = function(m) {
-
+  if(m.type == 'ACKNEWLEADER') {
+    this.syncResponses[m.senderId] = m;
+    if(Object.keys(this.syncResponses).length >= this.quorumSize) {
+      this.broadcast({
+        type: 'COMMIT'
+      });
+      this.phase = 3;
+    }
+  }
 };
 
 /*
@@ -92,11 +127,64 @@ upon receiving ACKNEWLEADER from follower f do
   Send a COMMIT message to f
   Q ← Q ∪ {f }
 end
-
 */
 
+Leader.prototype.write = function(value) {
+  this.propose({
+    type: 'PROPOSAL',
+    epoch: this.currentEpoch,
+    value: value,
+    zxid: {
+      epoch: this.currentEpoch,
+      counter: c++
+    }
+  })
+};
 
+Leader.prototype.broadcastPhase = function(m) {
+  if(m.type == 'ACK') {
+    this.broadcastResponses[m.senderId] = m;
+    if(Object.keys(this.broadcastResponses).length >= this.quorumSize) {
+      this.broadcast({
+        type: 'COMMIT',
+        epoch: m.currentEpoch,
+        value: m.value,
+        zxid: m.zxid
+      });
+    }
+  }
+  // Reaction to an incoming new follower:
+  if(m.type == 'FOLLOWERINFO') {
+    this.send(m.senderId, {
+      type: 'NEWEPOCH',
+      epoch: this.currentEpoch
+    });
+    this.send(m.senderId, {
+      type: 'NEWLEADER',
+      epoch: this.currentEpoch,
+      history: this.history
+    });
+  }
+  if(m.type == 'ACKNEWLEADER') {
+    this.send(m.senderId, {
+      type: 'COMMIT'
+    });
+    this.followers.push(m.senderId);
+  }
+};
 
+Leader.prototype.message = function(m) {
+  switch(this.phase) {
+    case 1:
+      this.discovery(m);
+      break;
+    case 2:
+      this.synchronization(m);
+      break;
+    case 3:
+      this.broadcastPhase(m);
+      break;
+  }
+};
 
-
-
+module.exports = Leader;

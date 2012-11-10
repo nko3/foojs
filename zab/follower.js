@@ -1,3 +1,12 @@
+function zxidSort(a, b) {
+  var epochCmp = a.epoch - b.epoch,
+      counterCmp = a.counter - b.counter;
+  if(epochCmp != 0) {
+    return epochCmp;
+  }
+  return counterCmp;
+}
+
 /*
 
 # Algorithm 1: Zab Phase 1: Discovery.
@@ -17,20 +26,24 @@ end
 
 */
 
-function Follower() {
+function Follower(id) {
+  this.id = id;
   this.phase = 1;
-  this.acceptedEpoch = null;
-  this.currentEpoch = ???;
-  this.history = [];
-  this.lastZxid = ???;
+
+  this.history = []; // a log of transaction proposals accepted
+  this.acceptedEpoch = 0; // the epoch number of the last NEWEPOCH message accepted
+  this.currentEpoch = 0 // the epoch number of the last NEWLEADER message accepted
+  this.lastZxid = 0; // zxid of the last proposal in the history
 }
 
-Follower.prototype.discovery = function() {
-  // Send the message FOLLOWERINFO(F.acceptedEpoch) to L
-  this.send('leader', {
-    type: 'FOLLOWERINFO',
-    epoch: this.acceptedEpoch
-  });
+Follower.prototype.execute = function() {
+  if(this.phase == 1) {
+    // Send the message FOLLOWERINFO(F.acceptedEpoch) to L
+    this.send('leader', {
+      type: 'FOLLOWERINFO',
+      epoch: this.acceptedEpoch
+    });
+  }
 };
 
 Follower.prototype.discoveryMessage = function(m) {
@@ -45,18 +58,10 @@ Follower.prototype.discoveryMessage = function(m) {
         lastZxid: this.lastZxid
       });
       this.phase = 2;
+    } else if(m.epoch < this.acceptedEpoch) {
+      this.state = 'ELECTION';
+      this.phase = 0;
     }
-  }
-};
-
-Follower.prototype.message = function(m) {
-  switch(this.phase) {
-    case 1:
-      this.discoveryMessage(m);
-    case 2:
-      this.synchronization(m);
-    case 3:
-      this.broadcast(m);
   }
 };
 
@@ -89,14 +94,14 @@ end
 
 Follower.prototype.synchronization = function(m) {
   var self = this;
-  if(m.type == 'NEWELADER') {
+  if(m.type == 'NEWLEADER') {
     if(this.acceptedEpoch == m.epoch && m.history) {
       // todo ATOMICALLY
       this.currentEpoch = m.epoch; // TODO flush to disk
-      m.history.sort(function(a, b){
-        return b.zxid - a.zxid;
-      }).forEach(function(e) {
-        acceptProposal(e, e.z, e.v);
+      m.history
+      .sort(zxidSort)
+      .forEach(function(e) {
+        acceptProposal(e, e.zxid, e.value);
       });
       this.history = m.history;
       // end ATOMICALLY
@@ -108,11 +113,11 @@ Follower.prototype.synchronization = function(m) {
     }
   }
   if(m.type == 'COMMIT') {
-    this.history.outstandingTransactions().sort(function(a, b) {
-      return b.zxid - a.zxid;
-    }).forEach(function(t) {
-      self.emit('deliver', t.v, t.z);
-    });
+    this.history.outstandingTransactions()
+      .sort(zxidSort)
+      .forEach(function(t) {
+        self.emit('deliver', t.v, t.zxid);
+      });
     this.state = 3;
   }
 };
@@ -135,7 +140,7 @@ end
 
 */
 
-Follower.prototype.broadcast = function(m) {
+Follower.prototype.broadcastPhase = function(m) {
   var self = this;
   if (this.isLeader) {
     this.emit('ready', this.currentEpoch);
@@ -144,20 +149,33 @@ Follower.prototype.broadcast = function(m) {
     this.history.push(m); // with write-ahead logging
     this.send('leader', {
       type: 'ACK',
-      v: m.v,
-      z: m.z
+      value: m.value,
+      zxid: m.zxid
     });
   }
   if(m.type == 'COMMIT') {
     if(this.outstandingTransactions().length > 0) {
-      this.emit('deliver', t.v, t.z);
+      this.emit('deliver', t.value, t.zxid);
     } else {
       this.on('outstandingTransactionsDone', function() {
-        self.emit('deliver', t.v, t.z);
+        self.emit('deliver', t.value, t.zxid);
       });
     }
   }
 
 };
 
+Follower.prototype.message = function(m) {
+  switch(this.phase) {
+    case 1:
+      this.discoveryMessage(m);
+      break;
+    case 2:
+      this.synchronization(m);
+      break;
+    case 3:
+      this.broadcastPhase(m);
+      break;
+  }
+};
 module.exports = Follower;
