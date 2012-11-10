@@ -17,9 +17,13 @@ Coordinator.prototype.create = function(path, data, flags, callback) {
   var transaction = {
     type: 'write',
     ctime: new Date(),
-    data: data,
+    mtime: new Date(),
+    key: path,
+    value: data,
     version: 1,
-    flags: flags // ephemeral, sequential, regular
+    flags: flags, // ephemeral, sequential, regular
+    ephemeralOwner: 0, // The session id of the owner of this znode if the znode is an ephemeral node. If it is not an ephemeral node, it will be zero.
+    numChildren: 0
   };
   // create
   this.transact(transaction, callback);
@@ -35,7 +39,8 @@ Coordinator.prototype.remove = function(path, version, callback) {
     callback(new Error('Version does not match'));
   }
   var transaction = {
-    type: 'remove'
+    type: 'remove',
+    key: path
   };
   this.transact(transaction, callback);
 };
@@ -49,9 +54,12 @@ Coordinator.prototype.setData = function(path, data, version, callback) {
   // generate transaction
   var meta = {
     type: 'write',
-    ctime: new Date(),
-    data: data,
-    version: old.version + 1
+    mtime: new Date(),
+    key: path,
+    value: data,
+    version: old.version + 1,
+    ephemeralOwner: 0, // The session id of the owner of this znode if the znode is an ephemeral node. If it is not an ephemeral node, it will be zero.
+    numChildren: 0
   };
   // write
   this.persistence.transact(transaction, callback);
@@ -59,6 +67,12 @@ Coordinator.prototype.setData = function(path, data, version, callback) {
 
 Coordinator.prototype.sync = function(path, callback) {
   // initiate a ZAB write and only return after it has been committed
+  var meta = {
+    type: 'sync'
+
+  };
+  // write
+  this.persistence.transact(transaction, callback);
 };
 
 // READ operations
