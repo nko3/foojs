@@ -34,6 +34,8 @@ function Leader(id) {
   this.broadcastResponses = {};
 }
 
+require('util').inherits(Leader, require('events').EventEmitter);
+
 Leader.prototype.execute = function() {
   // phase 1 is no-op
   if(this.phase == 2) {
@@ -103,6 +105,7 @@ Leader.prototype.synchronization = function(m) {
         type: 'COMMIT'
       });
       this.phase = 3;
+      this.emit('ready', this.currentEpoch);
     }
   }
 };
@@ -130,13 +133,12 @@ end
 */
 
 Leader.prototype.write = function(value) {
-  this.propose({
+  this.broadcast({
     type: 'PROPOSAL',
-    epoch: this.currentEpoch,
     value: value,
     zxid: {
       epoch: this.currentEpoch,
-      counter: c++
+      counter: ++this.lastZxid
     }
   })
 };
@@ -147,7 +149,6 @@ Leader.prototype.broadcastPhase = function(m) {
     if(Object.keys(this.broadcastResponses).length >= this.quorumSize) {
       this.broadcast({
         type: 'COMMIT',
-        epoch: m.currentEpoch,
         value: m.value,
         zxid: m.zxid
       });

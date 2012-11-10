@@ -37,6 +37,12 @@ exports['given 3 peers'] = {
         peers[1].message(message);
       });
     };
+
+    peers.forEach(function(p) {
+      p.on('deliver', function(value, zxid) {
+        console.log('deliver', value, zxid);
+      });
+    });
   },
 
   'when the peers acceptedEpoch is zero, the first phase completes': function(done) {
@@ -55,8 +61,14 @@ exports['given 3 peers'] = {
     }, 10);
   },
 
-  'the second phase succeeds': function(done){
-    var peers = this.peers, leader = this.leader;
+  'the second phase succeeds with acceptedEpoch, history empty': function(done){
+    var peers = this.peers, leader = this.leader,
+        readyEmitted = false;
+
+    leader.on('ready', function() {
+      readyEmitted = true;
+    });
+
     leader.execute();
     peers.forEach(function(p) {
       p.execute();
@@ -67,8 +79,25 @@ exports['given 3 peers'] = {
       assert.equal(peers[0].phase, 3);
       assert.equal(peers[1].phase, 3);
       assert.equal(leader.phase, 3);
+      assert.ok(readyEmitted);
       done();
     }, 10);
+  },
+
+  'in phase 3, writing from the leader will deliver the value on the followers': function(done) {
+    var peers = this.peers, leader = this.leader,
+        deliveries = {};
+    leader.write('foo');
+    peers.forEach(function(p) {
+      p.on('deliver', function(value, zxid) {
+        deliveries[p.id] = { value: value,  zxid: zxid };
+        if(Object.keys(deliveries).length == 2) {
+          // deliveries were done
+          assert.ok(true);
+          done();
+        }
+      });
+    });
   }
 
 };

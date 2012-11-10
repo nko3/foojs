@@ -1,3 +1,5 @@
+// if result < -1, sort a to a lower index than b.
+// if result > 1, sort a to a higher index than b.
 function zxidSort(a, b) {
   var epochCmp = a.epoch - b.epoch,
       counterCmp = a.counter - b.counter;
@@ -33,8 +35,13 @@ function Follower(id) {
   this.history = []; // a log of transaction proposals accepted
   this.acceptedEpoch = 0; // the epoch number of the last NEWEPOCH message accepted
   this.currentEpoch = 0 // the epoch number of the last NEWLEADER message accepted
-  this.lastZxid = 0; // zxid of the last proposal in the history
+  this.lastZxid = {
+    epoch: 0,
+    counter: 0
+  }; // zxid of the last proposal in the history
 }
+
+require('util').inherits(Follower, require('events').EventEmitter);
 
 Follower.prototype.execute = function() {
   if(this.phase == 1) {
@@ -113,12 +120,14 @@ Follower.prototype.synchronization = function(m) {
     }
   }
   if(m.type == 'COMMIT') {
-    this.history.outstandingTransactions()
-      .sort(zxidSort)
-      .forEach(function(t) {
-        self.emit('deliver', t.v, t.zxid);
-      });
-    this.state = 3;
+    // using this.lastZxid, determine which transactions have not been committed
+    this.history.sort(zxidSort).forEach(function(t) {
+      if(zxidSort(self.lastZxid, t.zxid) < -1) {
+        self.lastZxid = t.zxid;
+        self.emit('deliver', t.value, t.zxid);
+      }
+    });
+    this.phase = 3;
   }
 };
 
@@ -142,9 +151,8 @@ end
 
 Follower.prototype.broadcastPhase = function(m) {
   var self = this;
-  if (this.isLeader) {
-    this.emit('ready', this.currentEpoch);
-  }
+  // in this implementation, the roles are not joined so a follower can't become
+  // a leader
   if(m.type == 'PROPOSAL') {
     this.history.push(m); // with write-ahead logging
     this.send('leader', {
@@ -154,15 +162,17 @@ Follower.prototype.broadcastPhase = function(m) {
     });
   }
   if(m.type == 'COMMIT') {
-    if(this.outstandingTransactions().length > 0) {
-      this.emit('deliver', t.value, t.zxid);
-    } else {
-      this.on('outstandingTransactionsDone', function() {
-        self.emit('deliver', t.value, t.zxid);
-      });
-    }
-  }
+    // since we only have one thread, and the only way to get to this
+    // stage is via stage 2, we can assume that all the transactions have been delivered
 
+//    if(this.outstandingTransactions().length > 0) {
+      this.emit('deliver', m.value, m.zxid);
+//    } else {
+//      this.on('outstandingTransactionsDone', function() {
+//        self.emit('deliver', t.value, t.zxid);
+//      });
+//    }
+  }
 };
 
 Follower.prototype.message = function(m) {
