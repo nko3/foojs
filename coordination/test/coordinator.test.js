@@ -9,8 +9,10 @@ exports['given a MemoryPersistence based coordinator'] = {
   },
 
   'can create a regular node': function(done) {
-    this.c.create('/foo', 'bar', {}, function(name) {
-      this.c.getData(function('/foo', false, function(data, stat) {
+    var self = this;
+    this.c.create('/aaa', 'bar', {}, function(err, name) {
+      if(err) throw err;
+      self.c.getData('/aaa', false, function(err, data, stat) {
         assert.equal(data, 'bar');
         assert.equal(stat.ephemeralOwner, 0);
         done();
@@ -19,8 +21,11 @@ exports['given a MemoryPersistence based coordinator'] = {
   },
 
   'can create a ephemeral node': function(done) {
-    this.c.create('/foo', 'bar', { ephemeral: true }, function(name) {
-      this.c.getData(function('/foo', false, function(data, stat) {
+    var self = this;
+    this.c.create('/bbb', 'bar', { ephemeral: true }, function(err, name) {
+      if(err) throw err;
+      self.c.getData('/bbb', false, function(err, data, stat) {
+        if(err) throw err;
         assert.equal(data, 'bar');
         assert.equal(stat.ephemeralOwner, 1);
         done();
@@ -29,12 +34,21 @@ exports['given a MemoryPersistence based coordinator'] = {
   },
 
   'can create a sequential node': function(done) {
-    this.c.create('/foo', 'bar', { sequential: true }, function(name) {
-      assert.ok(name.match(/\/foo[0-9]+/));
-      this.c.getData(function('/foo', false, function(data, stat) {
+    var self = this;
+    this.c.create('/a1/ccc', 'bar', { sequential: true }, function(err, name) {
+      if(err) throw err;
+      assert.ok(name.match(/\/a1\/ccc[0-9]+/));
+      self.c.getData(name, false, function(err, data, stat) {
+        if(err) throw err;
         assert.equal(data, 'bar');
-        assert.equal(stat.ephemeralOwner, 1);
-        done();
+        assert.equal(stat.ephemeralOwner, 0);
+        self.c.create('/a1/ccc', 'bar', { sequential: true }, function(err, name2) {
+          if(err) throw err;
+          console.log(name, name2);
+          assert.ok(name2.match(/\/a1\/ccc[0-9]+/));
+          assert.notEqual(name2, name);
+          done();
+        });
       });
     });
   }
