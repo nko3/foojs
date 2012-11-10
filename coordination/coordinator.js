@@ -130,14 +130,14 @@ Coordinator.prototype.setData = function(path, data, version, callback) {
     return callback(new Error('Version does not match'));
   }
   // generate transaction
-  var meta = {
+  var transaction = {
     type: 'write',
     key: path,
     value: data,
     meta: {
       ctime: old.meta.ctime,
       mtime: new Date(),
-      version: old.version + 1,
+      version: old.meta.version + 1,
       ephemeralOwner: 0 // The session id of the owner of this znode if the znode is an ephemeral node. If it is not an ephemeral node, it will be zero.
     }
   };
@@ -175,7 +175,7 @@ Coordinator.prototype.getData = function(path, watcher, callback) {
   callback(undefined, meta.value, meta.meta);
 };
 
-Coordinator.prototype.getChildren = function(path, watch, callback) {
+Coordinator.prototype.getChildren = function(path, watcher, callback) {
   var meta = this.persistence.get(path);
   if(!meta) {
     return callback(new Error('Path does not exist'));

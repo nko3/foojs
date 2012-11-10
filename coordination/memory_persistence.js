@@ -58,11 +58,10 @@ MemoryPersistence.prototype.getChildren = function(path){
   var sorted = Object.keys(this.table).sort(),
       index = sorted.indexOf(path),
       result = [];
-
-  if(index == -1) return [];
   index++;
+  if(index == 0 || !sorted[index]) return [];
 
-  while(sorted[index].substr(0, path.length) == path &&
+  while(sorted[index] && sorted[index].substr(0, path.length) == path &&
         !sorted[index].substr(path.length+1).match(/\//) ) {
     result.push(sorted[index]);
     index++;
