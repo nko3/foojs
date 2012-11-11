@@ -159,29 +159,29 @@ Coordinator.prototype.sync = function(path, callback) {
 
 Coordinator.prototype.exists = function(path, watcher, callback) {
   if(watcher) {
-    this.persistence.watch(path, callback);
+    this.persistence.watch(path, watcher);
   }
   callback(this.persistence.has(path));
 };
 
 Coordinator.prototype.getData = function(path, watcher, callback) {
   var meta = this.persistence.get(path);
+  if(watcher) {
+    this.persistence.watch(path, watcher);
+  }
   if(!meta) {
     return callback(new Error('Path does not exist'));
-  }
-  if(watcher) {
-    this.persistence.watch(path, callback);
   }
   callback(undefined, meta.value, meta.meta);
 };
 
 Coordinator.prototype.getChildren = function(path, watcher, callback) {
   var meta = this.persistence.get(path);
+  if(watcher) {
+    this.persistence.watch(path, watcher);
+  }
   if(!meta) {
     return callback(new Error('Path does not exist'));
-  }
-  if(watcher) {
-    this.persistence.watch(path, callback);
   }
   callback(this.persistence.getChildren(path));
 };

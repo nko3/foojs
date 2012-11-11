@@ -79,7 +79,40 @@ exports['given a MemoryPersistence based coordinator'] = {
         });
       });
     });
-  }
+  },
+
+  'can set a watch on a exists() call': function(done) {
+    var self = this, assertions = 0;
+    this.c.exists('/exists', function() {
+      assert.equal(assertions, 2);
+      done();
+    }, function(result) {
+      assert.equal(result, false);
+      assertions++;
+      self.c.create('/exists', 'foo', {}, function(err, name) {
+        assert.equal(name, '/exists');
+        assertions++;
+      });
+    });
+  },
+
+  'can set a watch on a getData() call': function(done) {
+    var self = this, assertions = 0;
+    this.c.getData('/getdata', function() {
+      assert.equal(assertions, 2);
+      done();
+    }, function(err, data, stat) {
+      assert.equal(data, null);
+      assert.equal(stat, null);
+      assertions++;
+      self.c.create('/getdata', 'foo', {}, function(err, name) {
+        assert.equal(name, '/getdata');
+        assertions++;
+      });
+    });
+  },
+
+
 };
 
 // if this module is the script being run, then run the tests:

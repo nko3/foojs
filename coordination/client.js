@@ -1,11 +1,12 @@
-var client = require('mixu_minimal').Client;
+var client = require('mixu_minimal').Client,
+    MicroEE = require('microee');
 
 function CoordinationClient() {
   this.ack = 1;
   this.server = '';
   this.clientId = 0;
   this.heartbeat = null;
-
+  this.watches = new MicroEE();
 }
 
 CoordinationClient.prototype.connect = function(host, port, callback) {
@@ -22,13 +23,13 @@ CoordinationClient.prototype.connect = function(host, port, callback) {
       if(!self.heartbeat) {
         self.heartbeat = setInterval(function() {
         client
-          .post(self.server + '/rpc')
+          .post(self.server + '/heartbeat')
           .data({
             clientId: self.clientId,
             op: 'heartbeat'
           }).end(client.parse(function(err, data) {
-            // TODO: heartbeat returns information such
-            // as watched data
+            // process response (maybe ACK)
+            self.response(data);
           }));
         }, 2000);
       }
@@ -50,7 +51,11 @@ CoordinationClient.prototype._rpc = function(op, args) {
   if(typeof args[args.length -1 ] == 'function') {
     watcher = args.pop();
     data.ack = this.ack++;
-    // TODO register ack listener
+    // TODO register ack listen
+    self.watches.once(data.ack, function() {
+      console.log('ACK', data.ack);
+      watcher();
+    });
   }
 
   client
@@ -86,14 +91,26 @@ CoordinationClient.prototype.disconnect = function(callback) {
     .post(this.server + '/disconnect')
     .data({ clientId: this.clientId })
     .end(client.parse(function(err, data) {
-      console.log('disconnect result', data);
+      //console.log('disconnect result', data);
+      // stop the heartbeat
       if(self.heartbeat) {
         clearInterval(self.heartbeat);
         self.heartbeat = null;
       }
       callback && callback();
     }));
-  // stop the heartbeat
+};
+
+CoordinationClient.prototype.response = function(messages) {
+  var self = this;
+  console.log('client heartbeat response', messages);
+  if(Array.isArray(messages)) {
+    messages.forEach(function(message) {
+      if(message.ack) {
+        self.watches.emit(message.ack, message);
+      }
+    });
+  }
 };
 
 module.exports = CoordinationClient;

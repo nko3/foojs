@@ -9,12 +9,12 @@ function MemoryPersistence() {
 require('util').inherits(MemoryPersistence, require('events').EventEmitter);
 
 MemoryPersistence.prototype.has = function(path) {
-  return !! this.table[path];
-}
+  return !!this.table[path];
+};
 
 MemoryPersistence.prototype.get = function(path) {
   return this.table[path];
-}
+};
 
 MemoryPersistence.prototype.transact = function(transaction, callback) {
    if(transaction.type == 'write') {
@@ -26,18 +26,19 @@ MemoryPersistence.prototype.transact = function(transaction, callback) {
     }
     transaction.mzxid = JSON.parse(JSON.stringify(zxid));
     this.table[transaction.key] = { value: transaction.value, meta: transaction.meta };
-    this.emit(transaction.key);
     callback(undefined, transaction.key);
+    // always emit after the operation callback has run
+    this.emit(transaction.key);
   }
   if(transaction.type == 'remove') {
     delete this.table[transaction.key];
-    this.emit(transaction.key);
     callback && callback(undefined, transaction.key);
+    this.emit(transaction.key);
   }
   if(transaction.type == 'sync') {
     // no-op
-    this.emit(transaction.key);
     callback && callback(undefined, transaction.key);
+    this.emit(transaction.key);
   }
 };
 

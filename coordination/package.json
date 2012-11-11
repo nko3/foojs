@@ -13,6 +13,7 @@
   "repository": "",
   "author": "",
   "dependencies": {
-    "mixu_minimal": "git://github.com/mixu/minimal.git"
+    "mixu_minimal": "git://github.com/mixu/minimal.git",
+    "microee": "0.0.2"
   }
 }

@@ -118,6 +118,43 @@ exports['given a server and a client'] = {
           });
         }, 100);
       });
+    },
+
+    'can set a watch on a exists() call': function(done) {
+      this.timeout(6000);
+      var self = this, assertions = 0;
+      this.client.exists('/exists', function() {
+        assert.equal(assertions, 2);
+        done();
+      }, function(result) {
+        assert.equal(result, false);
+        assertions++;
+        self.client.create('/exists', 'foo', {}, function(err, name) {
+          assert.equal(name, '/exists');
+          assertions++;
+        });
+      });
+    },
+
+    'can set a watch on a getData() call': function(done) {
+      this.timeout(6000);
+      var self = this, assertions = 0;
+      this.client.getData('/getdata', function() {
+        assert.equal(assertions, 2);
+        done();
+      }, function(err, data, stat) {
+        assert.equal(data, null);
+        assert.equal(stat, null);
+        assertions++;
+        self.client.create('/getdata', 'foo', {}, function(err, name) {
+          assert.equal(name, '/getdata');
+          assertions++;
+        });
+      });
+    },
+
+    'can set a watch on a getChildren() call': function(done) {
+      done();
     }
 
   }

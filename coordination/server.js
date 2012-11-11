@@ -10,6 +10,10 @@ function CoordinationServer() {
   this.detector = new FailureDetector(3000);
   this.clientId = 1;
   this.coordinator = new Coordinator(new MemoryPersistence());
+
+  // queue for watch responses
+  this.responseQueue = {};
+  this.waitingClients = {};
 }
 
 CoordinationServer.prototype.listen = function(callback) {
@@ -53,6 +57,10 @@ CoordinationServer.prototype.listen = function(callback) {
         case '/rpc':
           self.detector.receive(query.clientId);
           self.rpc(query, res);
+          break;
+        case '/heartbeat':
+          self.detector.receive(query.clientId);
+          self.heartbeat(query, res);
           break;
         default:
           res.statusCode = 500;
@@ -125,7 +133,13 @@ CoordinationServer.prototype.rpc = function(query, res) {
       break;
     case 'exists':
       this.coordinator.exists(a[0], function() {
-
+        if(query.ack) {
+          if(!self.responseQueue[query.clientId]) {
+            self.responseQueue[query.clientId] = [ { ack: query.ack } ];
+          } else {
+            self.responseQueue[query.clientId].push({ ack: query.ack });
+          }
+        }
       }, function(result) {
         res.end(JSON.stringify({
           args: 1,
@@ -135,7 +149,13 @@ CoordinationServer.prototype.rpc = function(query, res) {
       break;
     case 'getData':
       this.coordinator.getData(a[0], function() {
-        // watcher
+        if(query.ack) {
+          if(!self.responseQueue[query.clientId]) {
+            self.responseQueue[query.clientId] = [ { ack: query.ack } ];
+          } else {
+            self.responseQueue[query.clientId].push({ ack: query.ack });
+          }
+        }
       }, function(err, data, stat) {
         res.end(JSON.stringify({
           args: 2,
@@ -145,7 +165,13 @@ CoordinationServer.prototype.rpc = function(query, res) {
       break;
     case 'getChildren':
       this.coordinator.getChildren(a[0], function() {
-
+        if(query.ack) {
+          if(!self.responseQueue[query.clientId]) {
+            self.responseQueue[query.clientId] = [ { ack: query.ack } ];
+          } else {
+            self.responseQueue[query.clientId].push({ ack: query.ack });
+          }
+        }
       }, function() {
 
       });
@@ -155,6 +181,23 @@ CoordinationServer.prototype.rpc = function(query, res) {
         ok: true
       }));
   }
+};
+
+CoordinationServer.prototype.heartbeat = function(message, res) {
+  var self = this;
+  this.waitingClients[message.clientId] = res;
+  setTimeout(function() {
+    console.log('heartbeat return', message.clientId, self.responseQueue);
+    if(self.waitingClients[message.clientId]) {
+      delete self.waitingClients[message.clientId];
+      if(self.responseQueue[message.clientId]) {
+        res.end(JSON.stringify(self.responseQueue[message.clientId]));
+        delete self.responseQueue[message.clientId];
+      } else {
+        res.end();
+      }
+    }
+  }, 3000);
 };
 
 module.exports = CoordinationServer;
