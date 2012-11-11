@@ -18,6 +18,8 @@ function spawn(command, args) {
   });
 }
 
-spawn('node', ['server.js', '0.0.0.0:8000', 'localhost:8000,localhost:8001,localhost:8002']);
-//spawn('node', ['server.js', '0.0.0.0:8001', 'localhost:8000,localhost:8001,localhost:8002']);
-//spawn('node', ['server.js', '0.0.0.0:8002', 'localhost:8000,localhost:8001,localhost:8002']);
+var servers = '1|localhost:8000,2|localhost:8001,3|localhost:8002';
+
+spawn('node', ['server.js', '1', '0.0.0.0:8000', servers]);
+spawn('node', ['server.js', '2', '0.0.0.0:8001', servers]);
+spawn('node', ['server.js', '3', '0.0.0.0:8002', servers]);

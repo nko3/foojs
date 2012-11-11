@@ -97,11 +97,11 @@ KVServer.prototype.close = function() {
 
 KVServer.prototype.rpc = function(query, res) {
   var a = query.args, self = this;
-  console.log(query);
+  console.log('rpc', query);
   switch(query.op) {
     case 'write':
       // perform a quorum write
-      this.write(query.key, query.value, query.writeFactor, function() {
+      this.write(query.key, query.value, parseInt(query.writeFactor, 10), function() {
         res.end(JSON.stringify({
           result: {
             from: self.quorum.id,
@@ -113,7 +113,7 @@ KVServer.prototype.rpc = function(query, res) {
       break;
     case 'read':
       // perform a quorum read
-      this.read(query.key, query.readFactor, function(err, values){
+      this.read(query.key, parseInt(query.readFactor, 10), function(err, values){
         res.end(JSON.stringify({
           result: {
             from: self.quorum.id,
@@ -134,7 +134,7 @@ KVServer.prototype.rpc = function(query, res) {
 
 KVServer.prototype.xserver = function(query, res) {
   var a = query.args, self = this;
-  console.log(query);
+  console.log('xserver', query);
   //  {"op":"write","key":"aaa","value":{"value":"my-value","clock":{"1":1}},"ack":3}
   switch(query.op) {
     case 'write':
@@ -176,10 +176,23 @@ module.exports = KVServer;
 
 // if this module is the script being run, then start up a server
 if (module == require.main) {
-  var id = 1,
-      port = 8000,
+  if(process.argv.length < 5) {
+    console.log('Usage: node server.js id host:port servers');
+    console.log('E.g.: node server.js 1 localhost:8000 1|localhost:8000,2|localhost:8001,3|localhost:8002');
+    process.exit();
+  }
+
+  var id = process.argv[2],
+      host = process.argv[3].split(':')[0],
+      port = process.argv[3].split(':')[1],
+      nodes = process.argv[4].split(',').map(function(s){
+        var id = s.split('|')[0],
+            parts = s.split('|')[1].split(':');
+        return { id: id, host: parts[0], port: parts[1]};
+      }),
       server = new KVServer(id, nodes);
-  server.listen({ id: id, host: '0.0.0.0', port: port }, function() {
-    console.log('KV server listening at 0.0.0.0:'+port);
+  server.listen({ id: id, host: host, port: port }, function() {
+    console.log('KV server (id='+id+') listening at '+host+':'+port);
+    console.log('Nodes', nodes);
   });
 }

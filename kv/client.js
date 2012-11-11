@@ -65,3 +65,42 @@ KVClient.prototype._rpc = function(key, message, callback) {
 };
 
 module.exports = KVClient;
+
+// if this module is the script being run, then run a RPC
+if (module == require.main) {
+  if(process.argv.length < 5) {
+    console.log('To write a key: node client.js write key value writeFactor serverlist');
+    console.log('E.g.: node client.js write foo bar 3 "1|localhost:8000,2|localhost:8001,3|localhost:8002"');
+    console.log('To read a key: node client.js read key readFactor serverlist');
+    console.log('E.g.: node client.js read foo 2 "1|localhost:8000,2|localhost:8001,3|localhost:8002"');
+    process.exit();
+  }
+
+  var op = process.argv[2],
+      key = process.argv[3],
+      value = (op == 'write' ? process.argv[4] : ''),
+      factor = (op == 'write' ? process.argv[5] : process.argv[4]),
+      nodes = (op == 'write' ? process.argv[6] : process.argv[5]).split(',').map(function(s){
+        var id = s.split('|')[0],
+            parts = s.split('|')[1].split(':');
+        return { id: id, host: parts[0], port: parts[1]};
+      }),
+      kvclient = new KVClient();
+
+  nodes.forEach(function(n) {
+    kvclient.partitioner.addNode(n);
+  });
+  if(op == 'write') {
+    kvclient.set(key, value, factor, factor, function(err, data) {
+      if(err) throw err;
+      console.log('Value set');
+      process.exit();
+    });
+  } else if(op == 'read') {
+    kvclient.get(key, factor, function(err, values) {
+      if(err) throw err;
+      console.log('Result', values.map(function(i) { return i.value; }));
+      process.exit();
+    });
+  }
+}

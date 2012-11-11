@@ -27,14 +27,31 @@ Will be on npm soonish.
 
 Starting the server: you need at least 3 instances of the server running since reads and writes go to multiple servers. Each server can be started with:
 
-    node server.js [host]:[port] [list-of-all-servers]
+    node server.js id [host]:[port] [list-of-all-servers]
 
 For example
 
-    node server.js localhost:8000 localhost:8000,localhost:8001,localhost:8002
+    node server.js 1 localhost:8000 "1|localhost:8000,2|localhost:8001,3|localhost:8002"
+    node server.js 2 localhost:8001 "1|localhost:8000,2|localhost:8001,3|localhost:8002"
+    node server.js 3 localhost:8002 "1|localhost:8000,2|localhost:8001,3|localhost:8002"
 
 The list of servers will go away once a rendezvous mechanism is provided from the Nookeeper servers.
 
-You can run ```node start.js``` to do this - this has the benefit that all the servers are killed when you kill the launcher.
+You can run `node start.js` to do this - this has the benefit that all the servers are killed when you kill the launcher.
 
-## Writing keys and values
+## Writing and reading keys and values
+
+You can write and read keys from the command line:
+
+    node client.js write foo bar 3 "1|localhost:8000,2|localhost:8001,3|localhost:8002"
+
+writes the value `bar` the key `foo` to a quorum of 3 servers.
+
+To read:
+
+    node client.js read foo 2 "1|localhost:8000,2|localhost:8001,3|localhost:8002"
+
+reads the key `foo` from a quorum of 2 servers.
+
+There is also a Node API, read the tests for some examples - better documentation coming later.
+

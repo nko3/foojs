@@ -68,7 +68,7 @@ SloppyQuorum.prototype._execute = function(message, minimum, callback) {
       if(isMatch && !completed && !nodesResponded[node.clientId]) {
         responses.push(message.value);
         nodesResponded[node.clientId] = true;
-        if(responses.length + 1 > minimum) {
+        if(responses.length + 1 >= minimum) {
           completed = true;
           callback(undefined, responses);
         }
