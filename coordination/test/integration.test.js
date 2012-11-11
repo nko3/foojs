@@ -7,7 +7,6 @@ exports['given a server and a client'] = {
   before: function(done) {
     var self = this;
     this.server = new Server();
-    this.client = new Client();
 
     this.serverNotifications = [];
     this.server.detector.on('connect', function(id) {
@@ -19,6 +18,14 @@ exports['given a server and a client'] = {
     this.server.listen(done);
   },
 
+  beforeEach: function() {
+    this.client = new Client();
+  },
+
+  afterEach: function() {
+    this.client.disconnect();
+  },
+/*
   'can connect to server and maintain heartbeat': function(done) {
     this.timeout(8000);
     var client = this.client, server = this.server, notifications = this.serverNotifications;
@@ -33,8 +40,21 @@ exports['given a server and a client'] = {
         done();
       }, 7000);
     });
-  }
+  },
+*/
 
+  'given a connected client': {
+    beforeEach: function(done) {
+      this.client.connect('localhost', 8000, done);
+    },
+
+    'can make a RPC call': function(done) {
+      this.client.echo('foo', 'bar', function(data) {
+        assert.deepEqual(data, ['foo', 'bar']);
+        done();
+      });
+    }
+  }
 };
 
 // if this module is the script being run, then run the tests:
