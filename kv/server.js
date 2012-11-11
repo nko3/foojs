@@ -173,3 +173,13 @@ KVServer.prototype.read = function(key, readFactor, callback) {
 };
 
 module.exports = KVServer;
+
+// if this module is the script being run, then start up a server
+if (module == require.main) {
+  var id = 1,
+      port = 8000,
+      server = new KVServer(id, nodes);
+  server.listen({ id: id, host: '0.0.0.0', port: port }, function() {
+    console.log('KV server listening at 0.0.0.0:'+port);
+  });
+}
