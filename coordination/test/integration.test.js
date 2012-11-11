@@ -154,7 +154,20 @@ exports['given a server and a client'] = {
     },
 
     'can set a watch on a getChildren() call': function(done) {
-      done();
+      this.timeout(6000);
+      var self = this, assertions = 0;
+      this.client.getChildren('/children', function() {
+        assert.equal(assertions, 2);
+        done();
+      }, function(err, data, stat) {
+        assert.equal(data, null);
+        assert.equal(stat, null);
+        assertions++;
+        self.client.create('/children/aaa', 'foo', {}, function(err, name) {
+          assert.equal(name, '/children/aaa');
+          assertions++;
+        });
+      });
     }
 
   }
