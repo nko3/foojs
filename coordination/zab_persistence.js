@@ -1,12 +1,42 @@
-function ZabPersistence() {
-  this.isLeader = true;
-  this.zab = {}; // zab implementation
-  this.leaderConnection = {}; // TCP socket
+var MemTable = require('../sstable/memtable.js'),
+    Leader = require('../zab/leader.js'),
+    Follower = require('../zab/follower.js');
 
-  // hook up the zab into the sstable, so that commits go into it
-  this.table = new JSONTable();
-  this.zab.persistence(this.table);
+var zxid = { epoch: 1, counter: 1 };
+
+function ZabPersistence(isLeader) {
+  var self = this;
+  this.isLeader = isLeader;
+  this.table = new MemTable();
+  if(isLeader) {
+    this.zab = new Leader();
+    // the leader has a broadcast method
+    this.zab.broadcast = function(message) {
+      console.log('broadcast', message);
+    };
+  } else {
+    this.zab = new Follower();
+    this.zab.on('deliver', function(value, zxid) {
+      // hook up the zab into the sstable, so that commits go into it
+      console.log('deliver', value, zxid);
+      self.table[value] = zxid;
+    });
+  }
+  // set up the send(to, message) method
+  this.zab.send = function(to, message) {
+    console.log(to, message);
+  };
 }
+
+require('util').inherits(ZabPersistence, require('events').EventEmitter);
+
+ZabPersistence.prototype.has = function(path) {
+  return !!this.table[path];
+};
+
+ZabPersistence.prototype.get = function(path) {
+  return this.table[path];
+};
 
 ZabPersistence.prototype.transact = function(transaction, callback) {
   if(this.isLeader) {

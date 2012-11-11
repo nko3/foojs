@@ -5,7 +5,7 @@ var assert = require('assert'),
 exports['given three coordinators'] = {
   before: function() {
     var self = this;
-    this.server = new Server();
+    this.server = new Server(new MemoryPersistence());
     this.server.listen(done);
   },
 

@@ -2,21 +2,20 @@ var http = require('http'),
     url = require('url'),
 
     FailureDetector = require('../failuredetect/failure_detector.js'),
-    Coordinator = require('./coordinator.js'),
-    MemoryPersistence = require('./memory_persistence.js');
+    Coordinator = require('./coordinator.js');
 
-function CoordinationServer() {
+function CoordinationServer(persistence) {
   this.server = null;
   this.detector = new FailureDetector(3000);
   this.clientId = 1;
-  this.coordinator = new Coordinator(new MemoryPersistence());
+  this.coordinator = new Coordinator(persistence);
 
   // queue for watch responses
   this.responseQueue = {};
   this.waitingClients = {};
 }
 
-CoordinationServer.prototype.listen = function(callback) {
+CoordinationServer.prototype.listen = function(config, callback) {
   var self = this;
   this.server = http.createServer(function(req, res) {
     // determine the URL
@@ -70,7 +69,7 @@ CoordinationServer.prototype.listen = function(callback) {
           }));
       }
     });
-  }).listen(8000, callback);
+  }).listen(config.port, callback);
 };
 
 CoordinationServer.prototype.close = function() {
@@ -201,3 +200,26 @@ CoordinationServer.prototype.heartbeat = function(message, res) {
 };
 
 module.exports = CoordinationServer;
+
+// if this module is the script being run, then start up a server
+if (module == require.main) {
+  if(process.argv.length < 5) {
+    console.log('Usage: node server.js id host:port servers');
+    console.log('E.g.: node server.js 1 localhost:8000 1|localhost:8000,2|localhost:8001,3|localhost:8002');
+    process.exit();
+  }
+
+  var id = process.argv[2],
+      host = process.argv[3].split(':')[0],
+      port = process.argv[3].split(':')[1],
+      nodes = process.argv[4].split(',').map(function(s){
+        var id = s.split('|')[0],
+            parts = s.split('|')[1].split(':');
+        return { id: id, host: parts[0], port: parts[1]};
+      }),
+      server = new CoordinationServer();
+  server.listen({ id: id, host: host, port: port }, function() {
+    console.log('KV server (id='+id+') listening at '+host+':'+port);
+    console.log('Nodes', nodes);
+  });
+}

@@ -1,12 +1,13 @@
 var assert = require('assert'),
     Server = require('../server.js'),
-    Client = require('../client.js');
+    Client = require('../client.js'),
+    MemoryPersistence = require('../memory_persistence.js');
 
 exports['given a server and a client'] = {
 
   before: function(done) {
     var self = this;
-    this.server = new Server();
+    this.server = new Server(new MemoryPersistence());
 
     this.serverNotifications = [];
     this.server.detector.on('connect', function(id) {
@@ -15,7 +16,7 @@ exports['given a server and a client'] = {
     this.server.detector.on('disconnect', function(id) {
       self.serverNotifications.push({ op: 'disconnect', id: id});
     });
-    this.server.listen(done);
+    this.server.listen({ host: 'localhost', port: 9000 }, done);
   },
 
   beforeEach: function() {
@@ -45,7 +46,7 @@ exports['given a server and a client'] = {
 
   'given a connected client': {
     beforeEach: function(done) {
-      this.client.connect('localhost', 8000, done);
+      this.client.connect('localhost', 9000, done);
     },
 
     'disconnecting triggers notification on server': function(done) {
