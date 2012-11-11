@@ -32,12 +32,12 @@ MemoryPersistence.prototype.transact = function(transaction, callback) {
   if(transaction.type == 'remove') {
     delete this.table[transaction.key];
     this.emit(transaction.key);
-    callback(undefined, transaction.key);
+    callback && callback(undefined, transaction.key);
   }
   if(transaction.type == 'sync') {
     // no-op
     this.emit(transaction.key);
-    callback(undefined, transaction.key);
+    callback && callback(undefined, transaction.key);
   }
 };
 

@@ -14,7 +14,7 @@ CoordinationClient.prototype.connect = function(host, port, callback) {
   // send a connect package
   // start the heartbeat
   client
-    .get(this.server + '/connect')
+    .post(this.server + '/connect')
     .end(client.parse(function(err, data) {
       self.clientId = data.clientId;
       console.log(data);
@@ -22,7 +22,7 @@ CoordinationClient.prototype.connect = function(host, port, callback) {
       if(!self.heartbeat) {
         self.heartbeat = setInterval(function() {
         client
-          .get(self.server + '/rpc')
+          .post(self.server + '/rpc')
           .data({
             clientId: self.clientId,
             op: 'heartbeat'
@@ -54,11 +54,20 @@ CoordinationClient.prototype._rpc = function(op, args) {
   }
 
   client
-    .get(self.server + '/rpc')
+    .post(self.server + '/rpc')
     .data(data).end(client.parse(function(err, data) {
       if(err) throw err;
       // TODO: return processing
-      callback(data);
+      console.log('result', data);
+      if(data.args > 1) {
+        callback.apply(this, [ err ].concat(data.result));
+      } else {
+        if(op == 'exists') {
+          callback(data.result);
+        } else {
+          callback(err, data.result);
+        }
+      }
     }));
 };
 
@@ -74,10 +83,10 @@ CoordinationClient.prototype.disconnect = function(callback) {
   var self = this;
   // send a disconnect package
   client
-    .get(this.server + '/disconnect')
+    .post(this.server + '/disconnect')
     .data({ clientId: this.clientId })
     .end(client.parse(function(err, data) {
-      console.log(data);
+      console.log('disconnect result', data);
       if(self.heartbeat) {
         clearInterval(self.heartbeat);
         self.heartbeat = null;

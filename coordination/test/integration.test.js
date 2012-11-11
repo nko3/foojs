@@ -48,12 +48,78 @@ exports['given a server and a client'] = {
       this.client.connect('localhost', 8000, done);
     },
 
+    'disconnecting triggers notification on server': function(done) {
+      var self = this;
+      this.server.detector.once('disconnect', function(id) {
+        assert.equal(id, self.client.clientId);
+        done();
+      });
+      this.client.disconnect();
+    },
+
     'can make a RPC call': function(done) {
-      this.client.echo('foo', 'bar', function(data) {
+      this.client.echo('foo', 'bar', function(err, data) {
         assert.deepEqual(data, ['foo', 'bar']);
         done();
       });
+    },
+
+    'can create a regular node': function(done) {
+      var self = this;
+      this.client.create('/aaa', 'bar', {}, function(err, name) {
+        console.log(name);
+        if(err) throw err;
+        self.client.getData('/aaa', false, function(err, data, stat) {
+          console.log(err, data, stat);
+          assert.equal(data, 'bar');
+          assert.equal(stat.ephemeralOwner, 0);
+          done();
+        });
+      });
+    },
+
+    'can update a nodes data': function(done) {
+      var self = this;
+      this.client.setData('/aaa', 'abc', 1, function(err) {
+        if(err) throw err;
+        self.client.getData('/aaa', false, function(err, data, stat) {
+          assert.equal(data, 'abc');
+          assert.equal(stat.version, 2);
+          assert.equal(stat.ephemeralOwner, 0);
+          done();
+        });
+      });
+    },
+
+    'can remove a node': function(done) {
+      var self = this;
+      this.client.exists('/aaa', false, function(result) {
+        assert.ok(result);
+        self.client.remove('/aaa', 2, function(err) {
+          if(err) throw err;
+          self.client.exists('/aaa', false, function(result) {
+            assert.ok(!result);
+            done();
+          });
+        });
+      });
+    },
+
+    'can create an ephemeral node, and when the client disconnects it is deleted': function(done) {
+      var self = this;
+      this.client.create('/eee', 'abc', { ephemeral: true }, function(err, name) {
+        console.log(name);
+        if(err) throw err;
+        self.client.disconnect();
+        setTimeout(function() {
+          self.server.coordinator.exists('/eee', false, function(result) {
+            assert.ok(!result);
+            done();
+          });
+        }, 100);
+      });
     }
+
   }
 };
 

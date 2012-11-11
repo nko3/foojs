@@ -106,10 +106,10 @@ Coordinator.prototype.remove = function(path, version, callback) {
   var old = this.persistence.get(path);
   // check whether the item already exists
   if(!old) {
-    return callback(new Error('Path does not exist'));
+    return callback && callback(new Error('Path does not exist'));
   }
   if(old.meta.version != version) {
-    return callback(new Error('Version does not match'));
+    return callback && callback(new Error('Version does not match'));
   }
   var transaction = {
     type: 'remove',
@@ -138,7 +138,7 @@ Coordinator.prototype.setData = function(path, data, version, callback) {
       ctime: old.meta.ctime,
       mtime: new Date(),
       version: old.meta.version + 1,
-      ephemeralOwner: 0 // The session id of the owner of this znode if the znode is an ephemeral node. If it is not an ephemeral node, it will be zero.
+      ephemeralOwner: old.meta.ephemeralOwner // The session id of the owner of this znode if the znode is an ephemeral node. If it is not an ephemeral node, it will be zero.
     }
   };
   // write

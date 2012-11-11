@@ -1,3 +1,5 @@
+var MicroEE = require('microee'); // for the .when() function
+
 function FailureDetector(timeout) {
   var self = this;
   this.timeout = timeout;
@@ -7,7 +9,7 @@ function FailureDetector(timeout) {
   }, timeout);
 }
 
-require('util').inherits(FailureDetector, require('events').EventEmitter);
+MicroEE.mixin(FailureDetector);
 
 // if you are the initiating party, call this
 FailureDetector.prototype.connecting = function(to) {
