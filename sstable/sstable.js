@@ -1,3 +1,6 @@
+var fs = require('fs'),
+    path = require('path');
+
 // Sorted String Table - not particularly efficient since all the data is kept
 // in memory but all I need is a write-ahead log which looks like a KV-store
 // and that can be persisted.
@@ -9,7 +12,7 @@
 // irrelavant unless you want to read someone elses file format or want
 // to only keep the indices in memory - and that can be optimized later on.
 //
-function JSONTable(filepath) {
+function JSONTable(filepath, callback) {
   var self = this;
   this.snapNum = 1;
   this.logNum = 0;
@@ -19,12 +22,15 @@ function JSONTable(filepath) {
 
   // increment logNum once to come up with the new log file name
   this.logFileFD = null;
-  this.logFile = fs.createWriteStream(filePath, { flags: 'a',
+  var logFileName = path.dirname(filepath) + path.sep + path.basename(filepath, path.extname(filepath)) + '.log';
+  this.logFile = fs.createWriteStream(logFileName, { flags: 'a',
     encoding: null,
     mode: 0666 });
 
   this.logFile.on('open', function(fd) {
+    console.log('logfile open', fd);
     self.logFileFD = fd;
+    callback && callback();
   });
 }
 
@@ -57,7 +63,7 @@ JSONTable.prototype.insert = function(key, value) {
     throw new Error('SSTable values must be strings');
   }
   // write a insert into the log synchronously and fsync it
-  this.logFile.write('..');
+  this.logFile.write(JSON.stringify({ key: key, value: value }) + '\n');
   fs.fsyncSync(this.logFileFD);
 
   // now update the in-memory copy
@@ -66,7 +72,7 @@ JSONTable.prototype.insert = function(key, value) {
 
 JSONTable.prototype.remove = function(key) {
   // write a deletion instruction into the log and fsync it
-  this.logFile.write('..');
+  this.logFile.write(JSON.stringify({ key: key }) + '\n');
   fs.fsyncSync(this.logFileFD);
   // now update the in-memory copy
   // TODO: delete marker ?
@@ -84,7 +90,6 @@ JSONTable.prototype._snapshot = function(filename) {
   // note that deletion markers should be kept around
   // to hide obsolete values present in older sorted tables
 };
-
 
 JSONTable.load = function(filepath) {
   return new SSTable(filepath);
