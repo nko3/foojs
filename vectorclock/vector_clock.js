@@ -2,11 +2,13 @@
 // which have a clock key { clock: {} }
 
 // increments the counter for nodeId
-exports.increment = function(container, nodeId) {
-  if(container.clock) {
-    container.clock[nodeId] = (typeof container.clock[nodeId] == 'undefined' ? 1 : container.clock[nodeId] + 1);
+exports.increment = function(o, nodeId) {
+  if(o.clock) {
+    o.clock[nodeId] = (typeof o.clock[nodeId] == 'undefined' ? 1 : o.clock[nodeId] + 1);
+  } else {
+    o[nodeId] = (typeof o[nodeId] == 'undefined' ? 1 : o[nodeId] + 1);
   }
-  return container;
+  return o;
 };
 
 function allKeys(a, b){
@@ -22,17 +24,21 @@ function allKeys(a, b){
     });
 }
 
-
 // like a regular sort function, returns:
 // if a < b: -1
 // if a == b: 0
 // if a > b: 1
-exports.compare = function(a, b) {
+// E.g. if used to sort an array of keys, will order them in ascending order (1, 2, 3 ..)
+exports.ascSort = exports.compare = function(a, b) {
   var isGreater = false,
       isLess = false;
 
-  allKeys(a.clock, b.clock).forEach(function(key) {
-    var diff = (a.clock[key] || 0) - (b.clock[key] || 0);
+  // allow this function to be called with objects that contain clocks, or the clocks themselves
+  if(a.clock) a = a.clock;
+  if(b.clock) b = b.clock;
+
+  allKeys(a, b).forEach(function(key) {
+    var diff = (a[key] || 0) - (b[key] || 0);
     if(diff > 0) isGreater = true;
     if(diff < 0) isLess = true;
   });
@@ -43,22 +49,45 @@ exports.compare = function(a, b) {
   return 0; // neither is set, so equal
 };
 
+// sort in descending order (N, ... 3, 2, 1)
+exports.descSort = function(a, b) {
+  return 0 - exports.ascSort(a, b);
+};
+
+// equal, or not less and not greater than
 exports.isConcurrent = function(a, b) {
   return !!(exports.compare(a, b) == 0);
 };
 
+// identical
+exports.isIdentical = function(a, b) {
+  // allow this function to be called with objects that contain clocks, or the clocks themselves
+  if(a.clock) a = a.clock;
+  if(b.clock) b = b.clock;
+
+  allKeys(a, b).forEach(function(key) {
+    var diff = (a[key] || 0) - (b[key] || 0);
+    if(diff != 0) return false;
+  });
+  return true;
+};
+
+
 // given two vector clocks, returns a new vector clock with all values greater than
 // those of the merged clocks
 exports.merge = function(a, b) {
-  var last = null, result = {};
+  var last = null, result = {}, wantContainer = false;
   // allow this function to be called with objects that contain clocks, or the clocks themselves
+  if(a.clock && b.clock) wantContainer = true;
   if(a.clock) a = a.clock;
   if(b.clock) b = b.clock;
 
   allKeys(a, b).forEach(function(key) {
     result[key] = Math.max(a[key] || 0, b[key] || 0);
   });
-
+  if(wantContainer) {
+    return { clock: result };
+  }
   return result;
 };
 

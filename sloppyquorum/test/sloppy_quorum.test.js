@@ -1,6 +1,7 @@
 var assert = require('assert'),
     SloppyQuorum = require('../sloppy_quorum.js'),
-    MicroEE = require('microee');
+    MicroEE = require('microee'),
+    VClock = require('../../vectorclock/vector_clock.js');
 
 function FakeNode(id) {
   this.clientId = id;
@@ -39,23 +40,40 @@ exports['given a quorum of five'] = {
       new FakeNode(4),
       new FakeNode(5),
     ];
-    this.leader = new SloppyQuorum(this.nodes);
+    this.leader = new SloppyQuorum(1, this.nodes);
   },
 
   'can write a value': function(done) {
-    this.leader.write('aaa', 'bbb', 3, function(err) {
+    this.leader.write('aaa', { value: 'beep', clock: {} }, 3, function(err) {
       if(err) throw err;
       done();
     });
   },
 
   'can read a value': function(done) {
-    this.leader.read('aaa', 3, function(err, value) {
+    this.leader.read('aaa', 3, function(err, values) {
       if(err) throw err;
-      assert.equal(value, 'bbb');
+      assert.equal(values.length, 1);
+      assert.equal(values[0].value, 'beep');
       done();
     });
   },
+
+  'when the vector clocks have diverged, two different values are returned': function(done) {
+    // manipulate one of the nodes in the top 3
+    console.log(this.nodes[1]);
+    this.nodes[0].keys['aaa'] = {
+      value: 'foobar',
+      clock: VClock.increment(this.nodes[0].keys['aaa'].clock, this.nodes[0].clientId)
+    };
+
+    this.leader.read('aaa', 3, function(err, values) {
+      if(err) throw err;
+      assert.equal(values.length, 1);
+      assert.equal(values[0].value, 'foobar');
+      done();
+    });
+  }
 
 
 };
