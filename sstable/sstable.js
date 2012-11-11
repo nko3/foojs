@@ -15,7 +15,7 @@ function JSONTable(filepath) {
   this.logNum = 0;
   this.memtable = {};
   // load the file
-  this.load(filepath);
+  this._load(filepath);
 
   // increment logNum once to come up with the new log file name
   this.logFileFD = null;
@@ -28,7 +28,7 @@ function JSONTable(filepath) {
   });
 }
 
-JSONTable.prototype.load = function(filepath) {
+JSONTable.prototype._load = function(filepath) {
 
   // figure out pre-existing files
   // - same name, but number is appended (.log or .snap extensions)
@@ -74,7 +74,7 @@ JSONTable.prototype.remove = function(key) {
 };
 
 // writes a snapshot to disk
-JSONTable.prototype.snapshot = function(filename) {
+JSONTable.prototype._snapshot = function(filename) {
   // write the snapshot file (with snapnum +1)
 
   // write the completion marker

@@ -28,8 +28,8 @@ KVClient.prototype.set = function(key, value, W, N, callback) {
     op: 'write',
     key: key,
     value: value,
-    W: W,
-    N: N
+    writeFactor: W,
+    replicationFactor: N
   }, callback);
 };
 
@@ -37,7 +37,7 @@ KVClient.prototype.get = function(key, R, callback) {
   this._rpc(key, {
     op: 'read',
     key: key,
-    R: R
+    readFactor: R
   }, callback);
 };
 
@@ -51,11 +51,15 @@ KVClient.prototype._rpc = function(key, message, callback) {
     .post(server + '/rpc')
     .data(message).end(client.parse(function(err, data) {
       if(err) throw err;
-      console.log('result', data);
+      console.log('client result', data);
       if(data.args > 1) {
         callback.apply(this, [ err ].concat(data.result));
       } else {
-        callback(err, data.result);
+        if(data.result.value) {
+          callback(err, data.result.value);
+        } else {
+          callback(err, data.result);
+        }
       }
     }));
 };

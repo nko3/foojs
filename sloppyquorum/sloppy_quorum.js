@@ -42,8 +42,10 @@ SloppyQuorum.prototype.read = function(key, readFactor, callback) {
     responses.forEach(function(item, index) {
       // if they are concurrent with that item, then there is a conflict
       // that we cannot resolve, so we need to return the item.
-      if(VClock.isConcurrent(item, responses[0]) && !VClock.isIdentical(item, responses[0])) {
+      if(VClock.isConcurrent(item, repaired[0]) && !VClock.isIdentical(item, repaired[0])) {
         repaired.push(item);
+      } else {
+        // console.log('filtering', item, VClock.isConcurrent(item, repaired[0]), !VClock.isIdentical(item, repaired[0]));
       }
     });
     console.log('responses', responses);
@@ -70,6 +72,8 @@ SloppyQuorum.prototype._execute = function(message, minimum, callback) {
           completed = true;
           callback(undefined, responses);
         }
+      } else {
+        console.log('ignoring result', message, isMatch, !completed, !nodesResponded[node.clientId]);
       }
       return isMatch;
     });

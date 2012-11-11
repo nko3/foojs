@@ -1,6 +1,7 @@
 var assert = require('assert'),
     Client = require('../client.js'),
-    Server = require('../server.js');
+    Server = require('../server.js'),
+    VClock = require('../../vectorclock/vector_clock.js');
 
 exports['given a client and four servers'] = {
 
@@ -51,24 +52,30 @@ exports['given a client and four active servers'] = {
   before: function() {
     var self = this;
     this.client = new Client();
+
+    var self = this,
+        nodes = [
+          { id: 1, host: 'localhost', port: 9001 },
+          { id: 2, host: 'localhost', port: 9002 },
+          { id: 3, host: 'localhost', port: 9003 },
+          { id: 4, host: 'localhost', port: 9004 }
+        ];
     this.servers = [];
-    [
-      { id: 1, host: 'localhost', port: 9001 },
-      { id: 2, host: 'localhost', port: 9002 },
-      { id: 3, host: 'localhost', port: 9003 },
-      { id: 4, host: 'localhost', port: 9004 }
-    ].forEach(function(n, index) {
+    nodes.forEach(function(n, index) {
       self.client.partitioner.addNode(n);
-      self.servers[index] = new Server(n.id, self.servers);
+      self.servers[index] = new Server(n.id, nodes);
       self.servers[index].listen(n);
     });
+
+    this.uniqueValue = Math.random();
   },
 
   // tests about RPC
 
   'can write a value': function(done) {
     var self = this;
-    this.client.set('foo', 'bar', 3, 3, function(err, data) {
+    this.client.set('foo', this.uniqueValue, 3, 3, function(err, data) {
+      if(err) throw err;
       assert.equal(data.from, self.client.getPrimaryForKey('foo').id);
       done();
     });
@@ -76,9 +83,46 @@ exports['given a client and four active servers'] = {
 
   'can read a value': function(done) {
     var self = this;
-    this.client.get('foo', 3, function(err, data) {
-      assert.equal(data.from, self.client.getPrimaryForKey('foo').id);
-      console.log(err, data);
+    this.client.get('foo', 3, function(err, values) {
+      if(err) throw err;
+      assert.equal(values.length, 1);
+      assert.equal(values[0].value, self.uniqueValue);
+      done();
+    });
+  },
+
+  'when one node has more up to date information, read repair picks the one with the greatest clock': function(done) {
+    // manipulate one of the nodes in the top 3
+    var old = JSON.parse(this.servers[0].persistence.get('foo'));
+    old.value = 'foobar';
+    old.clock = VClock.increment(old.clock, this.servers[0].quorum.id);
+    this.servers[0].persistence.insert('foo', JSON.stringify(old));
+    this.client.get('foo', 3, function(err, values) {
+      if(err) throw err;
+      assert.equal(values.length, 1);
+      assert.equal(values[0].value, 'foobar');
+      done();
+    });
+  },
+
+  'when the vector clocks have diverged, two different values are returned': function(done) {
+    var old = JSON.parse(this.servers[0].persistence.get('foo'));
+    old.value = 'helloworld';
+    old.clock = VClock.increment(old.clock, this.servers[0].quorum.id);
+    this.servers[0].persistence.insert('foo', JSON.stringify(old));
+    old = JSON.parse(this.servers[1].persistence.get('foo'));
+    old.value = 'inconsistent';
+    old.clock = VClock.increment(old.clock, this.servers[1].quorum.id);
+    this.servers[1].persistence.insert('foo', JSON.stringify(old));
+    this.client.get('foo', 3, function(err, values) {
+      if(err) throw err;
+      assert.equal(values.length, 2);
+      assert.ok(values.some(function(i) {
+        return i.value == 'helloworld';
+      }));
+      assert.ok(values.some(function(i) {
+        return i.value == 'inconsistent';
+      }));
       done();
     });
   }

@@ -2,7 +2,8 @@ var http = require('http'),
     url = require('url'),
     SloppyQuorum = require('../sloppyquorum/sloppy_quorum.js'),
     client = require('mixu_minimal').Client,
-    MicroEE = require('microee');
+    MicroEE = require('microee'),
+    MemTable = require('../sstable/memtable.js');
 
 function QuorumRPCNode(config) {
   this.clientId = config.id;
@@ -15,7 +16,7 @@ QuorumRPCNode.prototype.send = function(message, callback){
   var self = this;
   console.log('rpcNode.send('+this.server, JSON.stringify(message));
   client
-    .post(this.server + '/rpc')
+    .post(this.server + '/xserver')
     .data(message).end(client.parse(function(err, data) {
       if(err) throw err;
       console.log('result', data);
@@ -47,6 +48,8 @@ function KVServer(id, nodes) {
     return new QuorumRPCNode(n);
   });
   this.quorum = new SloppyQuorum(id, qnodes);
+  this.persistence = new MemTable();
+
 }
 
 KVServer.prototype.listen = function(configuration, callback) {
@@ -97,9 +100,30 @@ KVServer.prototype.rpc = function(query, res) {
   console.log(query);
   switch(query.op) {
     case 'write':
-      // TODO: quorum write
+      // perform a quorum write
+      this.write(query.key, query.value, query.writeFactor, function() {
+        res.end(JSON.stringify({
+          result: {
+            from: self.quorum.id,
+            ack: query.ack
+          },
+          args: 1
+        }));
+      });
+      break;
     case 'read':
-      // TODO: quorum read
+      // perform a quorum read
+      this.read(query.key, query.readFactor, function(err, values){
+        res.end(JSON.stringify({
+          result: {
+            from: self.quorum.id,
+            ack: query.ack,
+            value: values
+          },
+          args: 1
+        }));
+      });
+      break;
     default:
       res.end(JSON.stringify({
         result: { ok: true, from: this.quorum.id },
@@ -114,19 +138,20 @@ KVServer.prototype.xserver = function(query, res) {
   //  {"op":"write","key":"aaa","value":{"value":"my-value","clock":{"1":1}},"ack":3}
   switch(query.op) {
     case 'write':
-      // TODO local write
+      // local write
+      this.persistence.insert(query.key, JSON.stringify(query.value));
       res.end(JSON.stringify({
         result: { from: this.quorum.id, ack: query.ack },
         args: 1
       }));
       break;
     case 'read':
-      // TODO local read
+      // local read
       res.end(JSON.stringify({
         result: {
           from: this.quorum.id,
           ack: query.ack,
-          value: { value: 'foobar', clock: {} }
+          value: JSON.parse(this.persistence.get(query.key))
         },
         args: 1
       }));
