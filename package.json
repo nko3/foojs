@@ -1,6 +1,6 @@
 {
   "name": "nko3-foojs",
-  "version": "0.0.0",
+  "version": "0.0.0-1",
   "description": "foojs",
   "main": "server.js",
   "scripts": {
@@ -10,8 +10,7 @@
     "type": "git",
     "url": "git@github.com:nko3/foojs.git"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "engines": {
     "node": "0.8.x"
   },

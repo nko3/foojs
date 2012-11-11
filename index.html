@@ -1,0 +1,238 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>nookeeper - An open-source Zookeeper-style distributed coordination system with strong consistency guarantees (built in 48h at NKO 2012)
+
+</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link href='http://fonts.googleapis.com/css?family=Gudea' rel='stylesheet' type='text/css'>
+    <link type="text/css" rel="stylesheet" href="http://mixu.net/assets/css/gh.css"/>
+<style type="text/css">
+#title h1 {
+  background-color: #69245C;
+}
+.ca-menu li:hover{
+  border-color: #69245C;
+}
+.ca-menu li:hover .ca-icon{
+  color: #69245C;
+  text-shadow: 0px 0px 1px #69245C;
+}
+.ca-menu li:hover .ca-main{
+  color: #69245C;
+}
+
+</style>
+    <link rel="stylesheet" href="http://mixu.net/assets/css/font-awesome.css">
+    <link type="text/css" rel="stylesheet" href="http://mixu.net/assets/css/prettify.css"/>
+
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://mixu.net/assets/js/prettify.js"></script>
+
+  </head>
+<body onload="prettyPrint()">
+  <div id="wrapper">
+    <div id="header">
+      <div id="title">
+
+<h1>nko 2012 - foojs</h1>
+
+<h2>A distributed key-value store and a distributed coordination service</h2>
+
+<iframe src="http://nodeknockout.com/iframe/foojs" frameborder=0 scrolling=no allowtransparency=true width=115 height=25>
+</iframe>
+
+
+      </div>
+      <div id="navi">
+<ul class="ca-menu">
+  <li>
+      <a href="http://mixu.net/">
+          <span class="ca-icon"><i class="icon-search"></i></span>
+          <div class="ca-content">
+              <h2 class="ca-main">Other stuff</h2>
+              <h3 class="ca-sub">Check out other projects by me</h3>
+          </div>
+      </a>
+  </li>
+</ul>
+
+
+
+      </div>
+    </div>
+
+    <div class="clear"></div>
+    <div id="main">
+      <div id="content" class="post">
+<!-- Content -->
+
+<p>Hi there, I'm <a href="http://github.com/mixu">mixu</a>.</p>
+
+<p>My Node Knockout project is a distributed key-value store (and a coordination service).</p>
+
+<p>It's an eventually consistent system where servers are equal peers. Keys are mapped to the servers via a DHT. Reads and writes reach a sloppy quorum of the servers.</p>
+
+<p>I've basically spent quite a while reading up on this stuff, and then started from scratch and wrote a working key-value store and a slighly broken coordination service.</p>
+
+<h3>Two open source distributed systems: kv and nookeeper</h2>
+
+<p>There are two open source projects resulting from this weekend:</p>
+
+<ul class="list">
+  <li><a href="http://mixu.net/kv/">kv</a>: a distributed, eventually consistent key-value store, modeled after Amazon's Dynamo</li>
+  <li><a href="http://mixu.net/nookeeper/">nookeeper</a>: a distributed, strongly consistent coordination service, modeled after Apache Zookeeper</li>
+</ul>
+
+<p>If the links above don't work, it's because I haven't yet gotten the docs up on my own site. You can find the readmes below or <a href="https://github.com/nko3/foojs">on github</a></p>
+
+<h3>Future npm modules produced as a side product</h3>
+
+<p>And probably npm modules for the following algorithms:</p>
+
+<ul class="list">
+  <li>Zookeeper atomic broadcast (similar to Paxos, requires TCP, more strict ordering guarantees)</li>
+  <li>Consistent hashing with pluggable partioning schemes (basically, strategy 3 in the Amazon Dynamo paper)</li>
+  <li>Sloppy quorum implementation (given a set of servers, perform a quorum write or read at a given minimum number of participants)</li>
+  <li>Vector clocks (a simple library for sorting, comparing and resolving version conflicts automatically where possible using vector clocks)</li>
+  <li>Failure detector (basically a tracker that receives events from multiple TCP connections and manages timeouts locally so that failed servers are detected - works with multiple connections)</li>
+  <li>Memtables (and a slightly unfinished write-ahead log library) - for translating a set of operations on a hash into a series of append operations</li>
+</ul>
+
+<p>All this stuff is in one repository, since NKO participants were only given one repo. I'll split it apart and document it properly later on.</p>
+
+<p><a href="https://github.com/nko3/foojs">Have a look at the repo on github</a> - I hope I will be able to make it public, otherwise it'll be on my github.</p>
+
+
+<h2>kv - An open-source Dynamo-style distributed key-value store</h2>
+
+<h2>Features</h2>
+<ul class="list">
+<li>Written at Node Knockout 2012 in 48h</li>
+<li>Basically, a <a href="http://www.allthingsdistributed.com/2007/10/amazons_dynamo.html">Dynamo</a> clone, but written from scratch and in JS.</li>
+<li>Stores keys and values replicated across a group of undifferentiated servers.</li>
+<li>Automatic partitioning based on a <a href="http://en.wikipedia.org/wiki/Distributed_hash_table">distributed hash table</a> using <a href="http://en.wikipedia.org/wiki/Consistent_hashing">consistent hashing</a> (with adjustable data placement)</li>
+<li>Repartitioning when a node fails or is added</li>
+<li>Replication: data is replicated to a sloppy quorum of peers; e.g. the values are <a href="http://www.allthingsdistributed.com/2007/12/eventually_consistent.html">eventually consistent</a></li>
+<li>Latency and availability (e.g. <a href="http://web.mit.edu/6.033/2005/wwwdocs/quorum_note.html">the sizes of the read and write quorums</a>) are adjustable per-key</li>
+<li>Conflict resolution on read: <a href="http://en.wikipedia.org/wiki/Vector_clock">vector clocks</a> are used to resolve inconsistent reads if possible</li>
+</ul>
+<h2>Differences from Dynamo</h2>
+<ul class="list">
+<li>Doesn&#39;t use a gossip protocol for propagating information about group membership changes and node failures. Instead, a strongly consistent coordination service modeled after Zookeeper is used (also written at NKO - I call it Nookeeper for now).</li>
+<li>Merkle tree based anti-entropy is not implemented</li>
+<li>Hinted handoff is not implemented</li>
+</ul>
+<h2>Installing</h2>
+<p>Will be on npm soonish.
+
+</p>
+<h2>Starting the server</h2>
+<p>Starting the server: you need at least 3 instances of the server running since reads and writes go to multiple servers. Each server can be started with:
+
+</p>
+<pre class="prettyprint">node server.js id [host]:[port] [list-of-all-servers]</pre>
+<p>For example
+
+</p>
+<pre class="prettyprint">node server.js 1 localhost:8000 &quot;1|localhost:8000,2|localhost:8001,3|localhost:8002&quot;
+node server.js 2 localhost:8001 &quot;1|localhost:8000,2|localhost:8001,3|localhost:8002&quot;
+node server.js 3 localhost:8002 &quot;1|localhost:8000,2|localhost:8001,3|localhost:8002&quot;</pre>
+<p>The list of servers will go away once a rendezvous mechanism is provided from the Nookeeper servers.
+
+</p>
+<p>You can run <code>node start.js</code> to do this - this has the benefit that all the servers are killed when you kill the launcher.
+
+</p>
+<h2>Writing and reading keys and values</h2>
+<p>You can write and read keys from the command line:
+
+</p>
+<pre class="prettyprint">node client.js write foo bar 3 &quot;1|localhost:8000,2|localhost:8001,3|localhost:8002&quot;</pre>
+<p>writes the value <code>bar</code> the key <code>foo</code> to a quorum of 3 servers.
+
+</p>
+<p>To read:
+
+</p>
+<pre class="prettyprint">node client.js read foo 2 &quot;1|localhost:8000,2|localhost:8001,3|localhost:8002&quot;</pre>
+<p>reads the key <code>foo</code> from a quorum of 2 servers.
+
+</p>
+<p>There is also a Node API, read the tests for some examples - better documentation coming later.
+
+</p>
+
+
+<h2>nookeeper - An open-source Zookeeper-style distributed coordination system with strong consistency guarantees</h2>
+
+<h2>Features</h2>
+<ul class="list">
+<li>a centralized service for: maintaining configuration information, naming, providing distributed synchronization, and providing group services such as group membership and failure detection</li>
+<li>simple, filesystem-like API based on files and directories (basically stolen from Zookeeper)</li>
+<li>data is kept in memory (for fast operations) and also persisted into a write-ahead log</li>
+<li>writes are replicated in a strongly consistent manner using the ZAB, the Zookeeper atomic broadcast protocol; a protocol similar to Paxos</li>
+<li>sequential consistency: updates from a client will be applied in the order that they were sent</li>
+<li>atomicity: updates either succeed or fail. No partial results.</li>
+<li>reliability: once an update has been applied, it will persist from that time forward until a client overwrites it.</li>
+<li>fast reads: reads occur on one server (with watches to notify of subsequent changes if necessary)</li>
+</ul>
+<h2>KV vs nookeeper</h2>
+<p>I wrote two systems during the Node Knockout hackathon, here are the differences:
+
+</p>
+<ul class="list">
+<li>nookeeper is strongly consistent; kv is eventually consistent</li>
+<li>kv allows you to specify quorum sizes since inconsistent reads are allowed and reconciled using vector clocks. nookeeper always uses always uses a full quorum.</li>
+<li>in a partition, nookeeper chooses consistency; kv chooses availability</li>
+<li>kv can survive the loss of all server nodes up to the minimum quorum size for each operation (as long as the values have time to be replicated) because it uses sloppy quorums. nookeeper survives the loss of f nodes, where N &gt; 2f, e.g. with N = 3 servers, f = 1; with N = 5, f = 2 and so on.</li>
+</ul>
+<h2>Installing</h2>
+<p>Will be on npm soonish.
+
+</p>
+<h2>Starting the server</h2>
+<p>Starting the server: you need at least 3 instances of the server running since reads and writes go to multiple servers. Each server can be started with:
+
+</p>
+<pre class="prettyprint">node server.js id [host]:[port] [list-of-all-servers]</pre>
+<p>For example
+
+</p>
+<pre class="prettyprint">node server.js 1 localhost:9000 &quot;1|localhost:9000,2|localhost:9001,3|localhost:9002&quot;
+node server.js 2 localhost:9001 &quot;1|localhost:9000,2|localhost:9001,3|localhost:9002&quot;
+node server.js 3 localhost:9002 &quot;1|localhost:9000,2|localhost:9001,3|localhost:9002&quot;</pre>
+<p>You can run <code>node start.js</code> to do this - this has the benefit that all the servers are killed when you kill the launcher.
+
+</p>
+<h2>Client API</h2>
+<p>Nookeeper is based around persistent connections (for example, ephemeral nodes would not work since they are indicators for a connected client), so the client uses a REPL:
+
+</p>
+<pre class="prettyprint">node client.js localhost:9000</pre>
+<p>REPL commands / client API:
+
+</p>
+<ul class="list">
+<li><code>client.create(path, value, flags, callback)</code>: creates a node in the filesystem. The callback is <code>(err, name)</code> where name is the full name of the new node.</li>
+<li><code>client.setData(path, value, version, callback)</code>: updates a node in the filesystem. The callback is <code>(err)</code>.</li>
+<li><code>client.getData(path, watcher, callback)</code>: gets the data stored at a path. The watcher is a callback with no parameters, and gets triggered when a change occurs at the given path. The callback is <code>(err, data, stat)</code>, where data is the content, and stat is metadata about the node.</li>
+<li><code>client.exists(path, watcher, callback)</code>: callback is called with <code>true</code> if the node exists and <code>false</code> if it does not.</li>
+<li><code>client.remove(path, version, callback)</code>: removes the node at the path. The callback is <code>(err)</code>.</li>
+</ul>
+
+
+
+<!-- end content -->
+      </div>
+    </div>
+
+    <div class="clear">
+    </div>
+
+    <div id="footer">
+    </div>
+  </div>
+</body>
+</html>
