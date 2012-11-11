@@ -65,11 +65,12 @@ exports.isIdentical = function(a, b) {
   if(a.clock) a = a.clock;
   if(b.clock) b = b.clock;
 
-  allKeys(a, b).forEach(function(key) {
-    var diff = (a[key] || 0) - (b[key] || 0);
+  return allKeys(a, b).every(function(key) {
+    if(typeof a[key] == 'undefined' || typeof b[key] == 'undefined') return false;
+    var diff = a[key] - b[key];
     if(diff != 0) return false;
+    return true;
   });
-  return true;
 };
 
 

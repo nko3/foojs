@@ -13,6 +13,7 @@ exports['given two clocks'] = {
       vclock.increment(this.a, 'node-1');
       assert.equal( vclock.compare(this.a, this.b), vclock.GT);
       assert.equal( vclock.compare(this.b, this.a), vclock.LT);
+      assert.ok( !vclock.isIdentical(this.a, this.b));
     },
 
     'a clock incremented twice should be greater than 1': function() {
@@ -21,6 +22,7 @@ exports['given two clocks'] = {
       vclock.increment(this.b, 'node-1');
       assert.equal( vclock.compare(this.a, this.b), vclock.GT);
       assert.equal( vclock.compare(this.b, this.a), vclock.LT);
+      assert.ok( !vclock.isIdentical(this.a, this.b));
     },
 
     'two clocks with the same history should be equal and concurrent': function() {
@@ -28,6 +30,7 @@ exports['given two clocks'] = {
       vclock.increment(this.b, 'node-1');
       assert.equal( vclock.compare(this.a, this.b), vclock.CONCURRENT);
       assert.equal( vclock.compare(this.b, this.a), vclock.CONCURRENT);
+      assert.ok( vclock.isIdentical(this.a, this.b));
     }
   },
 
@@ -40,19 +43,22 @@ exports['given two clocks'] = {
       vclock.increment(this.b, 'node-2');
     },
 
-    'clocks incremented at different nodes should be concurrent': function() {
+    'clocks incremented at different nodes should be concurrent but not equal': function() {
       assert.equal( vclock.compare(this.a, this.b), vclock.CONCURRENT);
       assert.equal( vclock.compare(this.b, this.a), vclock.CONCURRENT);
+      assert.ok( !vclock.isIdentical(this.a, this.b));
       vclock.increment(this.a, 'node-1');
       assert.equal( vclock.compare(this.a, this.b), vclock.CONCURRENT);
+      assert.ok( !vclock.isIdentical(this.a, this.b));
       vclock.increment(this.b, 'node-2');
       vclock.increment(this.b, 'node-2');
       vclock.increment(this.b, 'node-2');
       assert.equal( vclock.compare(this.a, this.b), vclock.CONCURRENT);
+      assert.ok( !vclock.isIdentical(this.a, this.b));
     },
 
     'a merged clock should be greater than either of the clocks': function() {
-      var newClock = { clock: vclock.merge(this.a, this.b) };
+      var newClock = vclock.merge(this.a, this.b);
       assert.equal( vclock.compare(newClock, this.b), vclock.GT);
       assert.equal( vclock.compare(newClock, this.a), vclock.GT);
 

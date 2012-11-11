@@ -43,7 +43,9 @@ SloppyQuorum.prototype.read = function(key, readFactor, callback) {
       if(index == 0) return true;
       // if they are concurrent with that item, then there is a conflict
       // that we cannot resolve, so we need to return the item.
-      return VClock.isConcurrent(item, responses[0]) && !VClock.isIdentical(item, responses[0]);
+
+      return VClock.isConcurrent(item, responses[0])
+         && !VClock.isIdentical(item, responses[0]);
     });
     console.log('responses', responses);
     console.log('repaired', repaired);
