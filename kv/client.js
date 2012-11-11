@@ -1,16 +1,17 @@
-var Partitioner = require('../partitioning/partitioner.js');
+var Partitioner = require('../partitioning/partitioner.js'),
+    FailureDetector = require('../failuredetect/failure_detector.js');
 
-function KV() {
+function KVClient() {
   this.partitioner = new Partitioner();
-  this.partitioner.addNode();
-  this.partitioner.addNode();
-  this.partitioner.addNode();
-
-  this.failureDetector = new FailureDetector();
-
+  this.failureDetector = new FailureDetector(3000);
 }
 
-KV.prototype.set = function(key, value, W, N, callback) {
+KVClient.prototype.getPrimaryForKey = function(key) {
+  var primary = this.partitioner.getNodeList(key, 1);
+  return primary[0];
+};
+
+KVClient.prototype.set = function(key, value, W, N, callback) {
   // find out the primary
   var primary = this.partitioner.getNodeList(key, 1);
 
@@ -28,8 +29,8 @@ KV.prototype.set = function(key, value, W, N, callback) {
   });
 };
 
-KV.prototype.get = function(key, R, callback) {
+KVClient.prototype.get = function(key, R, callback) {
 
 };
 
-module.exports = KV;
+module.exports = KVClient;
