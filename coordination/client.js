@@ -51,7 +51,7 @@ CoordinationClient.prototype._rpc = function(op, args) {
   if(typeof args[args.length -1 ] == 'function') {
     watcher = args.pop();
     data.ack = this.ack++;
-    // TODO register ack listen
+    // register ack listen
     self.watches.once(data.ack, function() {
       console.log('ACK', data.ack);
       watcher();
@@ -62,7 +62,6 @@ CoordinationClient.prototype._rpc = function(op, args) {
     .post(self.server + '/rpc')
     .data(data).end(client.parse(function(err, data) {
       if(err) throw err;
-      // TODO: return processing
       console.log('result', data);
       if(data.args > 1) {
         callback.apply(this, [ err ].concat(data.result));

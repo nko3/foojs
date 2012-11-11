@@ -4,7 +4,7 @@ function SloppyQuorum(id, nodes) {
   this.nodes = nodes; // array of readable/writable streams
   this.ack = 1;
   this.maxTime = 30 * 1000;
-  this.id = 1;
+  this.id = id;
 };
 
 SloppyQuorum.prototype.write = function(key, value, writeFactor, callback) {

@@ -15,12 +15,11 @@ exports['given a client and four servers'] = {
       { id: 4, host: 'localhost', port: 9004 }
     ].forEach(function(n, index) {
       self.client.partitioner.addNode(n);
-      self.servers[index] = new Server();
-      self.servers[index].listen(n);
     });
   },
 
   // Tests about locating servers
+  // TODO: link this to the failure detector information from coordination
 
   'when all nodes are up, can find the primary': function() {
     console.log(this.client.getPrimaryForKey('test'));
@@ -43,6 +42,26 @@ exports['given a client and four servers'] = {
   'when all the nodes are down, the write fails': function() {
     this.client.partitioner.removeNode(4);
     assert.ok(!this.client.getPrimaryForKey('test'));
+  }
+
+};
+
+exports['given a client and four active servers'] = {
+
+  before: function() {
+    var self = this;
+    this.client = new Client();
+    this.servers = [];
+    [
+      { id: 1, host: 'localhost', port: 9001 },
+      { id: 2, host: 'localhost', port: 9002 },
+      { id: 3, host: 'localhost', port: 9003 },
+      { id: 4, host: 'localhost', port: 9004 }
+    ].forEach(function(n, index) {
+      self.client.partitioner.addNode(n);
+      self.servers[index] = new Server(n.id, self.servers);
+      self.servers[index].listen(n);
+    });
   },
 
   // tests about RPC

@@ -1,9 +1,38 @@
 var http = require('http'),
-    url = require('url');
+    url = require('url'),
+    SloppyQuorum = require('../sloppyquorum/sloppy_quorum.js'),
+    client = require('mixu_minimal').Client;
 
-function KVServer() {
+function QuorumRPCNode(config) {
+  this.id = config.id;
+  this.server = 'http://'+config.host+':'+config.port;
+}
+
+QuorumRPCNode.prototype.send = function(message, callback){
+  client
+    .post(this.server + '/rpc')
+    .data(message).end(client.parse(function(err, data) {
+      if(err) throw err;
+      console.log('result', data);
+      if(data.args > 1) {
+        callback.apply(this, [ err ].concat(data.result));
+      } else {
+        callback(err, data.result);
+      }
+    }));
+};
+
+function KVServer(id, nodes) {
   this.server = null;
-  this.online = {}; // set of servers that are online
+  var qnodes = nodes.filter(function(n) {
+    // exclude own id from nodes
+    if(n.id == id) return false;
+    return true;
+  }).map(function(n) {
+    // wrap each node into a function that has a send(message) function and a clientId
+    return new QuorumRPCNode(n);
+  });
+  this.quorum = new SloppyQuorum(id, qnodes);
 }
 
 KVServer.prototype.listen = function(configuration, callback) {
@@ -52,13 +81,13 @@ KVServer.prototype.rpc = function(query, res) {
   switch(query.op) {
     default:
       res.end(JSON.stringify({
-        ok: true
+        result: { ok: true, from: this.quorum.id, },
+        args: 1
       }));
   }
 };
 
 KVServer.prototype.setRequest = function(key, value, W, N) {
-
   // connect to N-1 other servers from the preference list
 
   // ensure that those servers are online (or select lower ranked servers if not)

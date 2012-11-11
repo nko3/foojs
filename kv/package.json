@@ -1,0 +1,19 @@
+{
+  "name": "kv",
+  "version": "0.0.0",
+  "description": "ERROR: No README.md file found!",
+  "main": "server.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": "",
+  "author": "",
+  "dependencies": {
+    "mixu_minimal": "git://github.com/mixu/minimal.git",
+    "microee": "0.0.2"
+  }
+}
