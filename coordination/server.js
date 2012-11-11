@@ -53,6 +53,9 @@ CoordinationServer.prototype.listen = function(config, callback) {
             disconnect: query.clientId
           }));
           break;
+        case '/xserver':
+          self.xserver(query, res);
+          break;
         case '/rpc':
           self.detector.receive(query.clientId);
           self.rpc(query, res);
@@ -74,6 +77,15 @@ CoordinationServer.prototype.listen = function(config, callback) {
 
 CoordinationServer.prototype.close = function() {
   this.server.close();
+};
+
+CoordinationServer.prototype.xserver = function(query, res) {
+  var a = query.args, self = this;
+//  console.log('xserver', query);
+  this.coordinator.persistence.zab.message(query);
+  setTimeout(function() {
+    self.coordinator.persistence.zab.execute();
+  }, 100);
 };
 
 CoordinationServer.prototype.rpc = function(query, res) {

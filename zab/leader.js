@@ -32,18 +32,23 @@ function Leader(id) {
   this.ackResponses = {};
   this.syncResponses = {};
   this.broadcastResponses = {};
+
+  this.followers = [];
+  this.sentNew = false;
+  this.sentLeader = false;
 }
 
 require('util').inherits(Leader, require('events').EventEmitter);
 
 Leader.prototype.execute = function() {
   // phase 1 is no-op
-  if(this.phase == 2) {
+  if(this.phase == 2 && !this.sentLeader) {
     this.broadcast({
       type: 'NEWLEADER',
       epoch: this.currentEpoch,
       history: this.history
     });
+    this.sentLeader = true;
   }
 }
 
@@ -52,19 +57,20 @@ Leader.prototype.discovery = function(m) {
   if(m.type == 'FOLLOWERINFO') {
     this.discoveryResponses[m.senderId] = m;
 
-    if(Object.keys(this.discoveryResponses).length >= this.quorumSize) {
+    if(Object.keys(this.discoveryResponses).length >= this.quorumSize && !this.sentNew) {
       var maxEpoch = Object.keys(this.discoveryResponses).reduce(function(prev, key){
         return Math.max(prev, self.discoveryResponses[key].epoch);
       }, 0);
 
       // implied?
       this.currentEpoch = maxEpoch + 1;
-      console.log(this.discoveryResponses, this.currentEpoch);
+//      console.log(this.discoveryResponses, this.currentEpoch);
 
       this.broadcast({
         type: 'NEWEPOCH',
         epoch: this.currentEpoch
       });
+      this.sentNew = true;
     }
   }
   if(m.type == 'ACKEPOCH') {
@@ -140,7 +146,7 @@ Leader.prototype.write = function(value) {
       epoch: this.currentEpoch,
       counter: ++this.lastZxid
     }
-  })
+  });
 };
 
 Leader.prototype.broadcastPhase = function(m) {
@@ -152,9 +158,12 @@ Leader.prototype.broadcastPhase = function(m) {
         value: m.value,
         zxid: m.zxid
       });
+      // deliver on leader
+      this.emit('deliver', m.value, m.zxid);
     }
   }
   // Reaction to an incoming new follower:
+  /*
   if(m.type == 'FOLLOWERINFO') {
     this.send(m.senderId, {
       type: 'NEWEPOCH',
@@ -172,6 +181,7 @@ Leader.prototype.broadcastPhase = function(m) {
     });
     this.followers.push(m.senderId);
   }
+  */
 };
 
 Leader.prototype.message = function(m) {

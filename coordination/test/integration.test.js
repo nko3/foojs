@@ -153,7 +153,7 @@ exports['given a server and a client'] = {
         });
       });
     },
-
+/*
     'can set a watch on a getChildren() call': function(done) {
       this.timeout(6000);
       var self = this, assertions = 0;
@@ -170,7 +170,7 @@ exports['given a server and a client'] = {
         });
       });
     }
-
+*/
   }
 };
 

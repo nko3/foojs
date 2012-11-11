@@ -93,6 +93,7 @@ exports['given 3 peers'] = {
         deliveries[p.id] = { value: value,  zxid: zxid };
         if(Object.keys(deliveries).length == 2) {
           // deliveries were done
+          console.log(deliveries);
           assert.ok(true);
           done();
         }
