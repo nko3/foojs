@@ -1,23 +1,37 @@
 var http = require('http'),
     url = require('url'),
     SloppyQuorum = require('../sloppyquorum/sloppy_quorum.js'),
-    client = require('mixu_minimal').Client;
+    client = require('mixu_minimal').Client,
+    MicroEE = require('microee');
 
 function QuorumRPCNode(config) {
-  this.id = config.id;
+  this.clientId = config.id;
   this.server = 'http://'+config.host+':'+config.port;
 }
 
+MicroEE.mixin(QuorumRPCNode);
+
 QuorumRPCNode.prototype.send = function(message, callback){
+  var self = this;
+  console.log('rpcNode.send('+this.server, JSON.stringify(message));
   client
     .post(this.server + '/rpc')
     .data(message).end(client.parse(function(err, data) {
       if(err) throw err;
       console.log('result', data);
-      if(data.args > 1) {
-        callback.apply(this, [ err ].concat(data.result));
+      // TODO: emit as "ack" for the quorum?
+      if(data.result.value) {
+        self.emit('ack', { ack: data.result.ack, value: data.result.value });
       } else {
-        callback(err, data.result);
+        self.emit('ack', { ack: data.result.ack });
+      }
+      // if called directly (SloppyQuorum doesn't use send callbacks currently)
+      if(callback) {
+        if(data.args > 1) {
+          callback.apply(this, [ err ].concat(data.result));
+        } else {
+          callback(err, data.result);
+        }
       }
     }));
 };
@@ -57,6 +71,9 @@ KVServer.prototype.listen = function(configuration, callback) {
       }
 
       switch(parts.pathname) {
+        case '/xserver':
+          self.xserver(query, res);
+          break;
         case '/rpc':
           self.rpc(query, res);
           break;
@@ -79,44 +96,55 @@ KVServer.prototype.rpc = function(query, res) {
   var a = query.args, self = this;
   console.log(query);
   switch(query.op) {
+    case 'write':
+      // TODO: quorum write
+    case 'read':
+      // TODO: quorum read
     default:
       res.end(JSON.stringify({
-        result: { ok: true, from: this.quorum.id, },
+        result: { ok: true, from: this.quorum.id },
         args: 1
       }));
   }
 };
 
-KVServer.prototype.setRequest = function(key, value, W, N) {
-  // connect to N-1 other servers from the preference list
-
-  // ensure that those servers are online (or select lower ranked servers if not)
-
-  // update the vector clock
-
-  // start a sloppy quorum with N writers (we don't do minimal quorums for now)
-
-  // when ack counts == N, return
+KVServer.prototype.xserver = function(query, res) {
+  var a = query.args, self = this;
+  console.log(query);
+  //  {"op":"write","key":"aaa","value":{"value":"my-value","clock":{"1":1}},"ack":3}
+  switch(query.op) {
+    case 'write':
+      // TODO local write
+      res.end(JSON.stringify({
+        result: { from: this.quorum.id, ack: query.ack },
+        args: 1
+      }));
+      break;
+    case 'read':
+      // TODO local read
+      res.end(JSON.stringify({
+        result: {
+          from: this.quorum.id,
+          ack: query.ack,
+          value: { value: 'foobar', clock: {} }
+        },
+        args: 1
+      }));
+      break;
+    default:
+      res.end(JSON.stringify({
+        result: { ok: true, from: this.quorum.id },
+        args: 1
+      }));
+  }
 };
 
-KVServer.prototype.setQuorum = function(key, value, W, N) {
-  // if I am not in the preference list, then do the hinted handoff based persistence
-  // if I am in the preference list, then persist normally
+KVServer.prototype.write = function(key, value, writeFactor, callback) {
+  this.quorum.write(key, { value: value, clock: {} }, writeFactor, callback);
 };
 
-
-KVServer.prototype.getRequest = function(key, R) {
-
-  // connect to R-1 other servers from the preference list
-
-  // ensure that those servers are online (or select lower ranked servers if not)
-
-  // send read request
-
-  // when replies == R, perform read reconciliation
-
-  // return one or more replies depending on the value of the vector clock
-
+KVServer.prototype.read = function(key, readFactor, callback) {
+  this.quorum.read(key, readFactor, callback);
 };
 
 module.exports = KVServer;

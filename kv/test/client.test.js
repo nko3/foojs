@@ -67,13 +67,20 @@ exports['given a client and four active servers'] = {
   // tests about RPC
 
   'can write a value': function(done) {
-    this.client.set('foo', 'bar', 3, 3, function() {
+    var self = this;
+    this.client.set('foo', 'bar', 3, 3, function(err, data) {
+      assert.equal(data.from, self.client.getPrimaryForKey('foo').id);
       done();
     });
   },
 
   'can read a value': function(done) {
-
+    var self = this;
+    this.client.get('foo', 3, function(err, data) {
+      assert.equal(data.from, self.client.getPrimaryForKey('foo').id);
+      console.log(err, data);
+      done();
+    });
   }
 
 };

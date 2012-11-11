@@ -34,14 +34,39 @@ exports['given four servers'] = {
     server.quorum.nodes.forEach(function(node) {
       node.send({ hello: 'world' }, function(err, data){
         //console.log(err, data);
-        assert.equal(data.from, node.id);
+        assert.equal(data.from, node.clientId);
         results++;
         if(results == 3) {
           done();
         }
       });
     });
+  },
+
+  // TODO: tests about servers in the quorum going offline
+  // and about selecting lower ranked servers
+  // and about the hinted handoff:
+  // if I am not in the preference list, then do the hinted handoff based persistence
+  // if I am in the preference list, then persist normally
+
+  'can write to a quorum': function(done) {
+    var self = this, server = this.servers[0];
+    server.write('aaa', 'my-value', 3, function(err) {
+      if(err) throw err;
+      done();
+    });
+  },
+
+  'can read from a quorum': function(done) {
+    var self = this, server = this.servers[0];
+    server.read('aaa', 3, function(err, values) {
+      if(err) throw err;
+      assert.equal(values.length, 1);
+      assert.equal(values[0].value, 'foobar');
+      done();
+    });
   }
+
 };
 
 // if this module is the script being run, then run the tests:

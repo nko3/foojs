@@ -37,15 +37,14 @@ SloppyQuorum.prototype.read = function(key, readFactor, callback) {
     // read repair using vector clocks
     // sort the responses by the vector clocks
     responses.sort(VClock.descSort);
-      // then compare them to the topmost (in sequential order, the greatest) item
-    var repaired = responses.filter(function(item, index) {
-      // always include the first item
-      if(index == 0) return true;
+    // then compare them to the topmost (in sequential order, the greatest) item
+    var repaired = [ responses.shift() ];
+    responses.forEach(function(item, index) {
       // if they are concurrent with that item, then there is a conflict
       // that we cannot resolve, so we need to return the item.
-
-      return VClock.isConcurrent(item, responses[0])
-         && !VClock.isIdentical(item, responses[0]);
+      if(VClock.isConcurrent(item, responses[0]) && !VClock.isIdentical(item, responses[0])) {
+        repaired.push(item);
+      }
     });
     console.log('responses', responses);
     console.log('repaired', repaired);

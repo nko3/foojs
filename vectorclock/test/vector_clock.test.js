@@ -9,6 +9,12 @@ exports['given two clocks'] = {
   },
 
   'at the same node': {
+    'an empty vector clock should be identical to another empty vector clock': function() {
+      assert.equal( vclock.compare(this.a, this.b), vclock.CONCURRENT);
+      assert.equal( vclock.compare(this.b, this.a), vclock.CONCURRENT);
+      assert.equal( vclock.isIdentical(this.a, this.b), true);
+    },
+
     'a clock incremented once should be greater than 0': function(){
       vclock.increment(this.a, 'node-1');
       assert.equal( vclock.compare(this.a, this.b), vclock.GT);
