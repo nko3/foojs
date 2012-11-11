@@ -1,6 +1,6 @@
 {
   "name": "nko3-foojs",
-  "version": "0.0.0-1",
+  "version": "0.0.0-2",
   "description": "foojs",
   "main": "server.js",
   "scripts": {

@@ -89,15 +89,15 @@
 
 <h3>Future npm modules produced as a side product</h3>
 
-<p>And probably npm modules for the following algorithms:</p>
+<p>I wrote following things in order to write kv and nookeeper. They will probably become npm modules for the following algorithms:</p>
 
 <ul class="list">
-  <li>Zookeeper atomic broadcast (similar to Paxos, requires TCP, more strict ordering guarantees)</li>
-  <li>Consistent hashing with pluggable partioning schemes (basically, strategy 3 in the Amazon Dynamo paper)</li>
-  <li>Sloppy quorum implementation (given a set of servers, perform a quorum write or read at a given minimum number of participants)</li>
-  <li>Vector clocks (a simple library for sorting, comparing and resolving version conflicts automatically where possible using vector clocks)</li>
-  <li>Failure detector (basically a tracker that receives events from multiple TCP connections and manages timeouts locally so that failed servers are detected - works with multiple connections)</li>
-  <li>Memtables (and a slightly unfinished write-ahead log library) - for translating a set of operations on a hash into a series of append operations</li>
+  <li><a href="https://github.com/nko3/foojs/tree/master/zab">Zookeeper atomic broadcast</a> (similar to Paxos, requires TCP, more strict ordering guarantees)</li>
+  <li><a href="https://github.com/nko3/foojs/tree/master/partitioning">Consistent hashing</a> with pluggable partioning schemes (basically, strategy 3 in the Amazon Dynamo paper)</li>
+  <li><a href="https://github.com/nko3/foojs/tree/master/sloppyquorum">Sloppy quorum implementation</a> (given a set of servers, perform a quorum write or read at a given minimum number of participants)</li>
+  <li><a href="https://github.com/nko3/foojs/tree/master/vectorclock">Vector clocks</a> (a simple library for sorting, comparing and resolving version conflicts automatically where possible using vector clocks)</li>
+  <li><a href="https://github.com/nko3/foojs/tree/master/failuredetect">Failure detector</a> (basically a tracker that receives events from multiple TCP connections and manages timeouts locally so that failed servers are detected - works with multiple connections)</li>
+  <li><a href="https://github.com/nko3/foojs/tree/master/sstable">Memtables</a> (and a slightly unfinished write-ahead log library) - for translating a set of operations on a hash into a series of append operations</li>
 </ul>
 
 <p>All this stuff is in one repository, since NKO participants were only given one repo. I'll split it apart and document it properly later on.</p>
